@@ -1,0 +1,47 @@
+name: Update Store Data & Inject Pixel
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '**/*.html'
+      - '!admin.html'       # <--- EXCEPTION 1: Do not wake the robot for admin.html
+      - 'global.js'
+  schedule:
+    - cron: '0 19 * * *'
+
+permissions:
+  contents: write 
+
+jobs:
+  update-database:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: 🚀 Run Fetch Script (Google Sheets)
+        # This runs EVERY time (Midnight Schedule, File Upload, and Manual)
+        run: node fetch-data.js
+
+      - name: 🛠️ Hardcode Meta Pixel into HTML
+        # This prevents the Pixel Injector from running on the 1:00 AM schedule!
+        if: github.event_name != 'schedule'
+        run: node inject-pixel.js
+        
+      - name: 💾 Commit and Push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # EXCEPTION 2: Explicitly list only public files so admin.html is never added by the bot
+          git add products.json index.html product.html checkout.html thankyou.html
+          
+          git commit -m "🤖 Auto-updated Store & Pixel" || echo "No changes to commit"
+          git push
