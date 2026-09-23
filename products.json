@@ -3,8 +3,8 @@
     "id": "EXMB_230926_1425_9HF",
     "in_stock": true,
     "name": "Export Quality Off White Baggy Jeans",
-    "price": 850,
-    "original_price": 999,
+    "price": "850",
+    "original_price": "999",
     "sold": "",
     "show_sold": false,
     "type": "Men",
@@ -14,7 +14,7 @@
     "description": "Here will be the product **Description** After you Provide",
     "colors": "",
     "sizes": "28, 30, 32, 34, 36",
-    "delivery_days": "2026-07-03T18:00:00.000Z",
+    "delivery_days": "4-7",
     "keywords": ""
   }
 ]
