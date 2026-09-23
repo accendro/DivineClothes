@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout</title>
+    <!-- Main stylesheet for shared UI styles (buttons, inputs, nav, etc.) -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Remix Icons CDN — used for cart, trash, arrow, message icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+</head>
+
+<body style="background: white;">
+    
+    <!-- TOP HEADER: Back arrow (left) + page title "Checkout" -->
+    <!-- Back button navigation is overridden dynamically by JS below -->
+    <div class="top-header checkout-header">
+        <div style="display:flex; align-items:center;">
+            <a href="product.html"><i class="ri-arrow-left-line menu-btn"></i></a>
+            <span style="margin-left:10px; font-weight:500;">Checkout</span>
+        </div>
+    </div>
+    
+    <div class="checkout-container">
+        
+        <!-- THIS IS THE EMPTY BOX FOR CART ITEMS -->
+        <!-- JS will loop through cart array and put items here -->
+        <div id="checkout-items-container">
+            
+        </div>
+        
+        <!-- Totals (Added IDs for JS Math) -->
+        <!-- These 3 spans are updated by updateTotals() in JS whenever cart or delivery changes -->
+        <!-- Totals (Updated to support Discounts) -->
+        <div style="background:#f9f9f9; padding:10px; border-radius:4px; margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
+                <span>Subtotal</span> <span id="subtotal-display">BDT 0</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
+                <span>Delivery</span> <span id="delivery-display">BDT 0</span>
+            </div>
+            
+            <!-- NEW: Hidden by default, shown if bKash selected -->
+            <div id="discount-row" style="display:none; justify-content:space-between; font-size:13px; margin-bottom:5px; color:#ff4757; font-weight:bold;">
+                <span>Discount Applied</span> <span id="discount-display">- BDT 0</span>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; font-weight:bold; margin-top:5px; border-top:1px solid #ddd; padding-top:5px;">
+                <span>Total</span> <span id="total-display" style="color:var(--primary);">BDT 0</span>
+            </div>
+            
+            <!-- NEW: Helps the user know exactly how much to send -->
+            <div id="payable-helper" style="display:none; font-size:12px; font-weight:bold; color:var(--primary); text-align:right; margin-top:4px;">
+            </div>
+        </div>
+        
+        <form>
+            <div class="form-group">
+                <label class="form-label">ডেলিভারি এরিয়া</label>
+                <select class="form-select" id="delivery-select"></select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">আপনার নাম:</label>
+                <input type="text" id="checkout-name" class="form-input" placeholder="আপনার সম্পূর্ণ নাম লিখুন" style="margin-bottom:10px;">
+                <label class="form-label">মোবাইল নাম্বার:</label>
+                <input type="tel" id="checkout-phone" class="form-input" placeholder="01XXXXXXXXX">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">ডেলিভারি ঠিকানা</label>
+                <textarea id="checkout-address" class="form-textarea" rows="2" placeholder="বাসা/ফ্ল্যাট নং, রোড, এলাকা, জেলা..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Special Note(optional)</label>
+                <textarea id="checkout-note" class="form-textarea" rows="2" placeholder="অর্ডার সম্পর্কে কোনো নির্দেশিকা থাকলে লিখুন..."></textarea>
+            </div>
+            
+            <!-- NEW: DYNAMIC PAYMENT CARDS CONTAINER -->
+            <!-- JS will build the cards and inputs here automatically! -->
+            <div class="form-group" id="payment-methods-container">
+            </div>
+            
+            <button type="button" class="place-order-btn">অর্ডার কনফার্ম করুন</button>
+        </form>
+        
+    </div>
+    
+    <!-- Confirmation security -->
+    <!-- Hidden by default. Shown via openConfirm(index). Cancel → closeConfirm() | Confirm → executeRemove() -->
+    <div class="custom-confirm-modal" id="confirm-modal">
+        <div class="confirm-box">
+            <p>Remove this item from your cart?</p>
+            <div style="display:flex; justify-content:space-between; margin-top:15px;">
+                <button onclick="closeConfirm()" class="btn-cancel">Cancel</button>
+                <button onclick="executeRemove()" class="btn-danger">Remove</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bottom Nav (Cart is Active) -->
+    <!-- To change which tab is active: move the "active" class to a different nav-item -->
+    <nav class="bottom-nav">
+        
+        <!-- Home is now inactive (gray) -->
+        <a href="index.html" class="nav-item">
+            <i class="ri-home-5-line"></i> Home
+        </a>
+        
+        <!-- Message Button — openMessenger() is defined in global.js -->
+        <!-- To change the Messenger link, update it there -->
+        <div class="nav-item" onclick="openMessenger()" style="cursor:pointer;">
+            <i class="ri-message-3-line"></i> Message
+        </div>
+        
+        <!-- Cart is now ACTIVE (Orange) -->
+        <a href="checkout.html" class="nav-item active">
+            <i class="ri-shopping-cart-2-fill"></i> Cart
+        </a>
+    </nav>
+    
+    <!-- global.js must load BEFORE the page script below -->
+    <!-- It provides: getCart(), updateCartIcon(), showToast(), openMessenger() -->
+    <!-- And constants: STORE_ID, API_URL, FEE_INSIDE, FEE_OUTSIDE, LOC_INSIDE, LOC_OUTSIDE -->
+    <script src="global.js"></script>
+    
+    <script>
+        // Tracks which cart item index is pending removal (used by the confirm modal)
+        let itemToRemove = null;
+        
+        // --- 1. DYNAMIC BACK BUTTON LOGIC ---
+        // If user came from checkout itself (e.g. page refresh) or has no referrer,
+        // send them to index.html instead of a blank/broken back page.
+        const backBtn = document.querySelector('.checkout-header a');
+        if (backBtn) {
+            backBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (document.referrer === "" || document.referrer.includes("checkout.html")) {
+                    window.location.href = 'index.html';
+                } else {
+                    window.history.back();
+                }
+            });
+        }
+        
+        
+        let currentPaymentMethod = 'COD';
+        
+        function renderPaymentMethods() {
+    const container = document.getElementById('payment-methods-container');
+    if (!container) return;
+    
+    // Check if bKash is enabled AND at least one discount is offered
+    const hasBkash = typeof BKASH_NUMBER !== 'undefined' && BKASH_NUMBER.trim() !== "" && (DISCOUNT_PARTIAL || DISCOUNT_FULL);
+    
+    if (!hasBkash) {
+        container.innerHTML = `
+                    <label class="form-label">পেমেন্ট মেথড</label>
+                    <div style="border:1px solid var(--primary); padding:12px; border-radius:6px; background:#fff0e8;">
+                        <span style="font-weight:bold; font-size:14px; color:var(--primary);">ক্যাশ অন ডেলিভারি</span>
+                    </div>
+                `;
+        return;
+    }
+    
+    // Always add Cash On Delivery
+    let cardsHtml = `
+                <label class="payment-card active" id="card-cod" onclick="selectPayment('COD')">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:bold; font-size:14px; color:#333;">ক্যাশ অন ডেলিভারি(পণ্য হাতে পেয়ে মূল্য পরিশোধ)</span>
+                        <i class="ri-checkbox-circle-fill check-icon" style="color:var(--primary); font-size:18px;"></i>
+                    </div>
+                </label>
+            `;
+    
+    // Only add Partial card if DISCOUNT_PARTIAL has a value greater than 0
+    if (typeof DISCOUNT_PARTIAL !== 'undefined' && DISCOUNT_PARTIAL) {
+        cardsHtml += `
+                    <label class="payment-card" id="card-partial" onclick="selectPayment('PARTIAL')">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>
+                                <span style="font-weight:bold; font-size:14px; color:#333;">অগ্রিম ডেলিভারি চার্জ পরিশোধে</span> 
+                                <span style="color:#ff4757; font-weight:bold; font-size:14px;">৳${DISCOUNT_PARTIAL} ছাড়</span>
+                            </span>
+                            <i class="ri-checkbox-circle-fill check-icon" style="color:#ddd; font-size:18px;"></i>
+                        </div>
+                    </label>
+                `;
+    }
+    
+    // Only add Full card if DISCOUNT_FULL has a value greater than 0
+    if (typeof DISCOUNT_FULL !== 'undefined' && DISCOUNT_FULL) {
+        cardsHtml += `
+                    <label class="payment-card" id="card-full" onclick="selectPayment('FULL')">
+                         <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>
+                                <span style="font-weight:bold; font-size:14px; color:#333;">সম্পূর্ণ মূল্য অগ্রিম পরিশোধে</span> 
+                                <span style="color:#ff4757; font-weight:bold; font-size:14px;">৳${DISCOUNT_FULL} ছাড়</span>
+                            </span>
+                            <i class="ri-checkbox-circle-fill check-icon" style="color:#ddd; font-size:18px;"></i>
+                        </div>
+                    </label>
+                `;
+    }
+    
+    // Inject the final HTML
+    container.innerHTML = `
+                <style>
+                    .payment-card { border: 1px solid #ddd; padding: 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; background: white; margin-bottom: 8px; display: block; }
+                    .payment-card.active { border-color: var(--primary); background: #fff0e8; }
+                    .payment-card.active-dropdown { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; margin-bottom: 0; }
+                    .bkash-box { display:none; background:#fff0e8; padding:15px; border-radius: 0 0 6px 6px; border: 1px solid var(--primary); border-top: 1px dashed var(--primary); margin-bottom: 8px; }
+                </style>
+                <label class="form-label">Payment Method</label>
+                <div style="display:flex; flex-direction:column;" id="payment-cards-wrapper">
+                    ${cardsHtml}
+                    <!-- BKASH BOX -->
+                    <div id="bkash-instructions" class="bkash-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <span style="font-size:13px; color:#333;">বিকাশ/নগদ সেন্ড মানি: 
+                                <strong id="bkash-number-text" style="font-size:16px; color:var(--primary); letter-spacing:1px; margin-left:5px;">${BKASH_NUMBER}</strong>
+                            </span>
+                            <i class="ri-file-copy-line" onclick="copyBkashNumber()" style="cursor:pointer; font-size:18px; color:var(--primary); background:white; padding:4px 6px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1);"></i>
+                        </div>
+                        <p id="bkash-helper-text" style="font-size:13px; font-weight:bold; color:#ff4757; margin-bottom:10px;"></p>
+                        <input type="text" id="bkash-trx" class="form-input" placeholder="যে নাম্বার থেকে send money করেছেন তা লিখুন" style="border-color:var(--primary); font-size:13px; background:white;">
+                    </div>
+                </div>
+            `;
+}
+        
+        function selectPayment(method) {
+    currentPaymentMethod = method;
+    
+    const bkashBox = document.getElementById('bkash-instructions');
+    
+    // Switch styles and move the bKash box
+    ['cod', 'partial', 'full'].forEach(m => {
+        const card = document.getElementById('card-' + m);
+        if (card) {
+            if (m.toUpperCase() === method) {
+                card.classList.add('active');
+                card.querySelector('.check-icon').style.color = 'var(--primary)';
+                
+                // If it's a bKash option, move the box right below this specific card
+                if (method !== 'COD') {
+                    card.classList.add('active-dropdown');
+                    card.after(bkashBox); // <--- THIS MOVES THE HTML BOX
+                    bkashBox.style.display = 'block';
+                }
+            } else {
+                card.classList.remove('active', 'active-dropdown');
+                card.querySelector('.check-icon').style.color = '#ddd';
+            }
+        }
+    });
+    
+    if (method === 'COD') {
+        bkashBox.style.display = 'none';
+    }
+    
+    // Recalculate the totals math to apply discount instantly
+    const subtotal = window.checkoutSubtotal || 0;
+    updateTotals(subtotal);
+}
+        
+        
+        
+        
+        // Run this immediately
+        renderPaymentMethods();
+        
+        
+        // --- COPY BKASH NUMBER UTILITY ---
+function copyBkashNumber() {
+    if (typeof BKASH_NUMBER !== 'undefined') {
+        let textArea = document.createElement("textarea");
+        textArea.value = BKASH_NUMBER;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            if (typeof showToast === 'function') {
+                showToast("bKash Number Copied!", true);
+            }
+        } catch (err) {
+            console.error("Copy failed.");
+        }
+        document.body.removeChild(textArea);
+    }
+}
+        
+        // --- 2. MAIN RENDER FUNCTION ---
+        // Reads the cart from localStorage and builds the item HTML.
+        // Also fires the Meta Pixel "InitiateCheckout" event (once per page load).
+        // Called on page load AND whenever qty/items change.
+        function loadCheckout() {
+            const cart = getCart(); // From global.js
+            
+            const container = document.getElementById('checkout-items-container');
+            
+            // If cart is empty: show empty state, hide form, reset totals
+            if (cart.length === 0) {
+                container.innerHTML = `
+            <div class="empty-cart-msg">
+                <i class="ri-shopping-cart-2-line"></i>
+                <h3>Your cart is empty</h3>
+                <button onclick="window.location.href='index.html'" class="place-order-btn" style="width:auto; padding:10px 20px;">Go Shop</button>
+            </div>`;
+                
+                // Hide the checkout form when cart is empty
+                const formEl = document.querySelector('form');
+                if (formEl) formEl.style.display = 'none';
+                updateTotals(0);
+                return;
+            }
+            
+            // Cart has items — make sure the form is visible
+            const formEl = document.querySelector('form');
+            if (formEl) formEl.style.display = 'block';
+            
+            let itemsHtml = '';
+            let subtotal = 0;
+            
+            // Loop through each cart item and build its HTML card
+            cart.forEach((item, index) => {
+                const p = item.product; // Product object (name, price, images, id)
+                const v = item.variant; // Variant object (qty, size, color)
+                const itemTotal = p.price * v.qty;
+                subtotal += itemTotal;
+                
+                // Fallback to 'Default' if no color name is set
+                const colorName = v.color && v.color.name ? v.color.name : 'Default';
+                // Use color-specific image if available, otherwise use first product image
+                const itemImg = v.color && v.color.img ? v.color.img : p.images[0];
+                
+                // Build the HTML for this cart item card
+                // - Clicking the image navigates to the product page
+                // - +/- buttons call changeCartQty(index, ±1)
+                // - Trash icon opens the confirmation modal
+                itemsHtml += `
+        <div class="checkout-item" style="position:relative; display:flex;">
+            <a href="product.html?id=${p.id}" style="flex-shrink:0;">
+                <img src="${itemImg}" class="checkout-img" style="cursor:pointer; display:block;">
+            </a>
+
+            <div class="checkout-details" style="margin-left:10px;">
+                <div class="checkout-title">${p.name}</div>
+                <div style="font-size:12px; color:#777; margin-top:3px;">Size: ${v.size}, Color: ${colorName}</div>
+
+                <div class="qty-control" style="margin-top:8px;">
+                    <button type="button" class="qty-btn" style="width:24px; height:24px;" onclick="changeCartQty(${index}, -1)">-</button>
+                    <span class="qty-val" style="margin:0 10px;">${v.qty}</span>
+                    <button type="button" class="qty-btn" style="width:24px; height:24px;" onclick="changeCartQty(${index}, 1)">+</button>
+                </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end;">
+                <div class="delete-btn-wrap" onclick="openConfirm(${index})"><i class="ri-delete-bin-line"></i></div>
+                <div class="checkout-price" style="margin-top:auto;">BDT ${itemTotal}</div>
+            </div>
+        </div>`;
+            });
+            
+            // Inject all item cards into the container and update price totals
+            container.innerHTML = itemsHtml;
+            updateTotals(subtotal);
+            
+            // META PIXEL: TRACK INITIATE CHECKOUT
+            // window flag ensures this fires only ONCE per page load,
+            // even if loadCheckout() is called again (e.g. after qty change)
+            try {
+                if (typeof fbq === 'function' && !window.hasFiredInitiateCheckout) {
+                    window.hasFiredInitiateCheckout = true;
+                    const productIds = cart.map(item => item.product.id);
+                    fbq('track', 'InitiateCheckout', {
+                        content_ids: productIds,
+                        content_type: 'product',
+                        value: subtotal,
+                        currency: 'BDT',
+                        num_items: cart.length
+                    });
+                }
+            } catch (e) {
+                // Pixel can be blocked by ad blockers — fail silently
+                console.warn("Pixel tracking blocked by browser.");
+            }
+            
+        }
+        
+        // --- 3. CART INTERACTIONS ---
+        // These functions are called from the inline onclick attributes in the item HTML above.
+        
+        // Increases or decreases qty for a specific cart item by index.
+        // Minimum qty is enforced as 1 — cannot go below.
+        function changeCartQty(index, change) {
+            let cart = getCart();
+            cart[index].variant.qty += change;
+            
+            // Prevent qty from going below 1
+            if (cart[index].variant.qty < 1) {
+                cart[index].variant.qty = 1;
+            }
+            
+            // STORE_ID prefix is set in global.js — keeps cart data isolated per store
+            // so multiple stores on the same domain don't share cart data
+            localStorage.setItem(STORE_ID + 'my_cart', JSON.stringify(cart));
+            loadCheckout();
+            updateCartIcon(); // Updates the cart badge count in the nav (from global.js)
+        }
+        
+        // Shows the "Remove item?" confirmation modal.
+        // Saves the item index so executeRemove() knows which one to delete.
+        function openConfirm(index) {
+            itemToRemove = index;
+            const confirmModal = document.getElementById('confirm-modal');
+            if (confirmModal) confirmModal.classList.add('active');
+        }
+        
+        // Hides the modal and clears the pending removal index
+        function closeConfirm() {
+            itemToRemove = null;
+            const confirmModal = document.getElementById('confirm-modal');
+            if (confirmModal) confirmModal.classList.remove('active');
+        }
+        
+        // Removes the item at the saved index, then re-renders
+        function executeRemove() {
+            if (itemToRemove !== null) {
+                let cart = getCart();
+                cart.splice(itemToRemove, 1); // Remove 1 item at the saved index
+                // STORE_ID prefix ensures we're editing the correct store's cart
+                localStorage.setItem(STORE_ID + 'my_cart', JSON.stringify(cart));
+                loadCheckout();
+                updateCartIcon();
+            }
+            closeConfirm(); // Always close the modal after action
+        }
+        
+        // --- 4. CALCULATION & TOTALS ---
+        // Updates the 3 price display spans in the summary box.
+        // Reads the selected delivery fee directly from the dropdown value.
+        // Called after every cart change or delivery area change.
+        function updateTotals(subtotal) {
+    window.checkoutSubtotal = subtotal;
+    
+    if (subtotal === 0) {
+        document.getElementById('subtotal-display').innerText = `BDT 0`;
+        document.getElementById('delivery-display').innerText = `BDT 0`;
+        document.getElementById('total-display').innerText = `BDT 0`;
+        document.getElementById('discount-row').style.display = 'none';
+        
+        const helperEl = document.getElementById('bkash-helper-text');
+        if (helperEl) helperEl.innerText = "";
+        return;
+    }
+    
+    const deliverySelect = document.getElementById('delivery-select');
+    const deliveryFee = deliverySelect ? parseInt(deliverySelect.value) : 0;
+    
+    let discount = 0;
+    let sendAmount = 0;
+    let helperText = "";
+    
+    const hasBkash = typeof BKASH_NUMBER !== 'undefined' && BKASH_NUMBER.trim() !== "";
+    
+    if (hasBkash) {
+        if (currentPaymentMethod === 'PARTIAL') {
+            discount = DISCOUNT_PARTIAL || 0;
+            sendAmount = deliveryFee;
+            helperText = `অনুগ্রহ করে উপরের নাম্বারে ডেলিভারি চার্জ ৳${sendAmount} পরিশোধ করুন।`;
+        } else if (currentPaymentMethod === 'FULL') {
+            discount = DISCOUNT_FULL || 0;
+            sendAmount = subtotal + deliveryFee - discount;
+            helperText = `অনুগ্রহ করে উপরের নাম্বারে ৳${sendAmount} মূল্য পরিশোধ করুন।`;
+        }
+    }
+    
+    const finalTotal = subtotal + deliveryFee - discount;
+    window.checkoutFinalTotal = finalTotal;
+    window.checkoutDiscount = discount;
+    
+    document.getElementById('subtotal-display').innerText = `BDT ${subtotal}`;
+    document.getElementById('delivery-display').innerText = `BDT ${deliveryFee}`;
+    
+    const discountRow = document.getElementById('discount-row');
+    if (discount > 0) {
+        discountRow.style.display = 'flex';
+        document.getElementById('discount-display').innerText = `- BDT ${discount}`;
+    } else {
+        discountRow.style.display = 'none';
+    }
+    
+    document.getElementById('total-display').innerText = `BDT ${finalTotal}`;
+    
+    const helperEl = document.getElementById('bkash-helper-text');
+    if (helperEl) {
+        helperEl.innerText = helperText;
+    }
+}
+        
+        // --- DELIVERY SETTINGS INJECTION (From global.js) ---
+        // Builds the two <option> tags using variables from global.js:
+        //   FEE_OUTSIDE / FEE_INSIDE  → delivery fee numbers
+        //   LOC_OUTSIDE / LOC_INSIDE  → area label text
+        // To change fees or area names → edit those variables in global.js
+        const deliveryDropdown = document.getElementById('delivery-select');
+        if (deliveryDropdown) {
+            
+            deliveryDropdown.innerHTML = `
+                <option value="${FEE_OUTSIDE}">${LOC_OUTSIDE} - BDT ${FEE_OUTSIDE}</option>
+                <option value="${FEE_INSIDE}">${LOC_INSIDE} - BDT ${FEE_INSIDE}</option>
+            `;
+            
+            // Re-run loadCheckout whenever delivery area changes, so totals update instantly
+            deliveryDropdown.addEventListener('change', () => {
+                loadCheckout();
+            });
+        }
+        
+        // --- FORM PERSISTENCE LOGIC ---
+        // Saves each form field to localStorage as the user types,
+        // so data isn't lost on accidental page refresh.
+        // On load, pre-fills fields with any previously saved values.
+        // All keys are prefixed with STORE_ID to avoid conflicts between stores.
+        // These are cleared from localStorage after a successful order.
+        function setupFormPersistence() {
+            const inputs = [
+                { id: 'checkout-name', key: 'saved_name' },
+                { id: 'checkout-phone', key: 'saved_phone' },
+                { id: 'checkout-address', key: 'saved_address' },
+                { id: 'checkout-note', key: 'saved_note' }
+            ];
+            
+            inputs.forEach(inputData => {
+                const el = document.getElementById(inputData.id);
+                if (el) {
+                    
+                    // 1. Load saved data when page opens (STORE_ID prefix keeps it store-specific)
+                    const savedValue = localStorage.getItem(STORE_ID + inputData.key);
+                    if (savedValue) el.value = savedValue;
+                    
+                    // 2. Save data instantly as the user types
+                    el.addEventListener('input', () => {
+                        localStorage.setItem(STORE_ID + inputData.key, el.value);
+                    });
+                }
+            });
+        }
+        
+        setupFormPersistence();
+        
+        // --- 5. ANTI-SPAM LOGIC ---
+        // Prevents a single device from placing more than 2 orders
+        // within any rolling 3-hour window.
+        // - canPlaceOrder() → returns false if limit is reached (checked before submit)
+        // - recordSuccessfulOrder() → saves a timestamp on each successful order
+        // Uses STORE_ID prefix so the order limit is tracked per store separately.
+        function canPlaceOrder() {
+            let orderHistory = JSON.parse(localStorage.getItem(STORE_ID + 'order_history') || '[]');
+            const now = new Date().getTime();
+            // Filter out timestamps older than 3 hours (10800000ms)
+            orderHistory = orderHistory.filter(time => now - time < 10800000);
+            
+            if (orderHistory.length >= 2) return false; // Limit reached
+            return true;
+        }
+        
+        // Saves the current timestamp to order history after a successful submission
+        function recordSuccessfulOrder() {
+            let orderHistory = JSON.parse(localStorage.getItem(STORE_ID + 'order_history') || '[]');
+            orderHistory.push(new Date().getTime());
+            localStorage.setItem(STORE_ID + 'order_history', JSON.stringify(orderHistory));
+        }
+        
+        // --- 6. SUBMISSION LOGIC ---
+        // Handles the full order placement flow when the button is clicked:
+        //   1. Validates inputs (name, address, phone format)
+        //   2. Checks anti-spam limit
+        //   3. Shows animated loading state on button
+        //   4. Fetches user IP for fraud/VPN detection
+        //   5. Builds order details string + image links
+        //   6. POSTs all data to API_URL (defined in global.js → Google Sheet)
+        //   7. On success: shows green checkmark, fires Purchase pixel,
+        //      clears cart + saved form data, redirects to thankyou.html
+        //   8. On error: resets button and shows a toast error message
+        const placeOrderBtn = document.querySelector('.place-order-btn');
+        if (placeOrderBtn) {
+            placeOrderBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                
+                // Block submission if cart is empty
+                const cart = getCart();
+                if (cart.length === 0) {
+                    showToast("Your cart is empty!", false);
+                    return;
+                }
+                
+                // Grab all four form field elements
+                const nameInput = document.getElementById('checkout-name');
+                const phoneInput = document.getElementById('checkout-phone');
+                const addressInput = document.getElementById('checkout-address');
+                const noteInput = document.getElementById('checkout-note');
+                
+                // Read and trim values (fallback to "" if element doesn't exist)
+                const name = nameInput ? nameInput.value.trim() : "";
+                const phone = phoneInput ? phoneInput.value.trim() : "";
+                const address = addressInput ? addressInput.value.trim() : "";
+                const note = noteInput ? noteInput.value.trim() : "";
+                
+                // --- VALIDATION ---
+                if (!name) { showToast("Please enter your name", false); return; }
+                if (!address) { showToast("Please enter your delivery address", false); return; }
+                
+                // Accepts: 01XXXXXXXXX, +8801XXXXXXXXX, 8801XXXXXXXXX
+                // To change allowed formats, update this regex
+                const phoneRegex = /^(?:\+88|88)?01[3-9]\d{8}$/;
+                if (!phone) {
+                    showToast("Please enter your phone number", false);
+                    return;
+                } else if (!phoneRegex.test(phone)) {
+                    showToast("Invalid Bangladesh phone number format", false);
+                    return;
+                }
+                
+                // Anti-spam check — blocks if 2+ orders placed in the last 3 hours
+                if (typeof canPlaceOrder === 'function' && !canPlaceOrder()) {
+                    showToast("Order limit reached! Please contact us on Messenger.", false);
+                    return;
+                }
+                
+                // --- NEW: BKASH VALIDATION ---
+let trxId = "";
+let paymentInfoStr = "Cash on Delivery";
+
+const hasBkash = typeof BKASH_NUMBER !== 'undefined' && BKASH_NUMBER.trim() !== "";
+
+if (hasBkash && currentPaymentMethod !== 'COD') {
+    const trxInput = document.getElementById('bkash-trx');
+    trxId = trxInput ? trxInput.value.trim() : "";
+    if (!trxId) {
+        showToast("Please enter your bKash/nogod Number ", false);
+        return;
+    }
+    paymentInfoStr = `(${currentPaymentMethod})✔️ \n- Bkash/Nogod Number: ${trxId}👈`;
+}
+                
+                
+                
+                // ========================================================
+                // --- NEW: ANIMATED LOADING STATE ---
+                // We inject a dynamic style tag just for the animation 
+                // so you don't have to edit style.css!
+                // ========================================================
+                if (!document.getElementById('processing-styles')) {
+                    const style = document.createElement('style');
+                    style.id = 'processing-styles';
+                    style.innerHTML = `
+                        @keyframes spin-loader { 100% { transform: rotate(360deg); } }
+                        @keyframes pulse-btn { 
+                            0% { opacity: 1; transform: scale(1); } 
+                            100% { opacity: 0.85; transform: scale(0.98); } 
+                        }
+                        .processing-anim { animation: pulse-btn 0.6s infinite alternate ease-in-out; }
+                        .spinner-icon { 
+                            display: inline-block; 
+                            animation: spin-loader 1s linear infinite; 
+                            margin-right: 8px; 
+                            font-size: 18px; 
+                            vertical-align: middle; 
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+                
+                // 1. Change button to spinning, pulsing state
+                // Disables clicks via pointerEvents so user can't double-submit
+                placeOrderBtn.innerHTML = `<i class="ri-loader-4-line spinner-icon"></i> প্রসেসিং হচ্ছে, অপেক্ষা করুন...`;
+                placeOrderBtn.classList.add('btn-disabled', 'processing-anim');
+                placeOrderBtn.style.pointerEvents = 'none';
+                
+                // --- GENERATE UNIQUE ORDER ID ---
+                // Format: ORD-XXXXX (5 random alphanumeric uppercase characters)
+                const uniqueId = 'ORD-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+                
+                // --- IP / GEO DETECTION ---
+                // Fetches buyer's IP and location for fraud/VPN detection.
+                // Non-fatal — order still proceeds even if this fails.
+                let ipInfoStr = "IP capture failed";
+                try {
+                    const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
+                    if (ipRes.ok) {
+                        const ipData = await ipRes.json();
+                        ipInfoStr = `IP: ${ipData.ip} | City: ${ipData.city} | Country: ${ipData.country_code}`;
+                        // Flag orders from outside Bangladesh (could be VPN or foreign buyer)
+                        if (ipData.country_code !== "BD") {
+                            ipInfoStr = "⚠️ FOREIGN/VPN DETECTED: " + ipInfoStr;
+                        }
+                    }
+                } catch (err) {
+                    console.warn("IP fetch blocked. Proceeding anyway.");
+                }
+                
+                // --- BUILD ORDER DETAILS FOR GOOGLE SHEET ---
+                // Loop through cart to build:
+                //   orderDetailsArray → formatted text block per item (sent to sheet)
+                //   imageLinksArray   → product images per item (sent to sheet)
+                let subtotal = 0;
+                let orderDetailsArray = [];
+                let imageLinksArray = [];
+                
+                cart.forEach(item => {
+                    const p = item.product;
+                    const v = item.variant;
+                    const colorName = v.color && v.color.name ? v.color.name : 'Default';
+                    const itemTotal = p.price * v.qty;
+                    subtotal += itemTotal;
+                    
+                    // Use all_imgs (combo images) if available, then single color img, then first product img
+                    const sheetImgs = (v.color && v.color.all_imgs) ? v.color.all_imgs : (v.color && v.color.img ? v.color.img : p.images[0]);
+                    
+                    // Each item gets a multi-line text block in the order details column
+                    orderDetailsArray.push(`${p.name}\n ......Quantity: ${v.qty}\n ......Color: ${colorName}\n ......Size: ${v.size}\n ......Price: BDT ${itemTotal}`);
+                    imageLinksArray.push(sheetImgs);
+                });
+                
+                // AGENCY TRICK: Automatically calculates based on the HTML value!
+                // Reads the currently selected delivery fee from the dropdown
+                // (Inside your placeOrderBtn.addEventListener)
+                const deliveryDropdown = document.getElementById('delivery-select');
+                const deliveryFee = deliveryDropdown ? parseInt(deliveryDropdown.value) : 0;
+                
+                // Use the globally calculated total from updateTotals()
+                const finalTotal = window.checkoutFinalTotal || (subtotal + deliveryFee);
+                const discount = window.checkoutDiscount || 0;
+                
+                let discountText = discount > 0 ? `\n- Discount Applied: - BDT ${discount} 🏷️` : "";
+                const orderDetailsText = orderDetailsArray.join('\n\n') + `\n\n- Delivery Fee: BDT ${deliveryFee}` + discountText + `\n- Payment: ${paymentInfoStr}`;
+                const imageLinksText = imageLinksArray.join('\n\n');
+                
+                // --- BUILD FORM DATA TO POST TO GOOGLE SHEET ---
+                // Each formData.append(key, value) becomes one column in the sheet.
+                // To add a new column → add a new append() here AND in your Google Apps Script.
+                const formData = new URLSearchParams();
+                formData.append('orderId', uniqueId);
+                formData.append('date', new Date().toLocaleString('en-US', { timeZone: 'Asia/Dhaka' })); // BD timezone
+                formData.append('name', name);
+                formData.append('phone', "'" + phone); // Apostrophe prefix prevents Sheets from auto-formatting as a number
+                formData.append('address', address);
+                formData.append('note', note);
+                formData.append('orderDetails', orderDetailsText);
+                formData.append('imageLinks', imageLinksText);
+                formData.append('subtotalPrice', `BDT ${subtotal}`);
+                formData.append('totalPrice', `BDT ${finalTotal}`);
+                formData.append('ipInfo', ipInfoStr);
+                
+                // --- SEND TO BACKEND (API_URL from global.js) ---
+                // mode: 'no-cors' is required for Google Apps Script web apps
+                try {
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData.toString()
+                    });
+                    
+                    // ========================================================
+                    // --- NEW: SUCCESS ANIMATION STATE ---
+                    // 2. Snap to green with a checkmark!
+                    // ========================================================
+                    placeOrderBtn.innerHTML = `<i class="ri-checkbox-circle-line" style="margin-right: 8px; font-size: 18px; vertical-align: middle;"></i> অর্ডার সফল হয়েছে!`;
+                    placeOrderBtn.classList.remove('processing-anim');
+                    placeOrderBtn.style.background = "#4cd137";
+                    
+                    placeOrderBtn.style.color = "white";
+                    
+                    // --- SUCCESS FLOW ---
+                    // Record the order timestamp for anti-spam tracking
+                    if (typeof recordSuccessfulOrder === 'function') recordSuccessfulOrder();
+                    // Save order info to localStorage (used by thankyou.html to show a summary)
+                    // STORE_ID prefix keeps these isolated per store
+                    localStorage.setItem(STORE_ID + 'order_phone', phone);
+                    localStorage.setItem(STORE_ID + 'last_order', JSON.stringify(cart));
+                    localStorage.setItem(STORE_ID + 'last_order_id', uniqueId);
+                    
+                    // Fire Meta Pixel "Purchase" event (only if fbq pixel is loaded)
+                    if (typeof fbq === 'function') {
+                        const productIds = cart.map(item => item.product.id);
+                        fbq('track', 'Purchase', {
+                            content_ids: productIds,
+                            content_type: 'product',
+                            value: finalTotal,
+                            currency: 'BDT',
+                            num_items: cart.length
+                        });
+                    }
+                    
+                    // Clear all saved form fields and the cart from localStorage
+                    // (These were saved by setupFormPersistence and global.js)
+                    // STORE_ID prefix must match how they were saved above
+                    localStorage.removeItem(STORE_ID + 'saved_name');
+                    localStorage.removeItem(STORE_ID + 'saved_phone');
+                    localStorage.removeItem(STORE_ID + 'saved_address');
+                    localStorage.removeItem(STORE_ID + 'saved_note');
+                    localStorage.removeItem(STORE_ID + 'my_cart');
+                    
+                    // 3. Wait 800ms so they have time to read "Order Successful" before leaving the page
+                    setTimeout(() => {
+                        window.location.href = 'thankyou.html';
+                    }, 800);
+                    
+                } catch (error) {
+                    console.error("Order Error:", error);
+                    showToast("Network error. Please check your internet and try again.", false);
+                    
+                    // --- RESET BUTTON ON ERROR ---
+                    placeOrderBtn.innerHTML = `অর্ডার কনফার্ম করুন`;
+                    placeOrderBtn.classList.remove('btn-disabled', 'processing-anim');
+                    placeOrderBtn.style.pointerEvents = 'auto';
+                }
+            });
+        }
+        
+        // --- 7. RUN ON PAGE LOAD ---
+        // Kick off the entire checkout render as soon as the page is ready
+        loadCheckout();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,574 @@
+/* --- RESET & VARIABLES --- */
+/* --- RESET & VARIABLES --- */
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap');
+
+:root {
+    --primary: #FF3F6C; /* Myntra Rose */
+    --accent: #03A685; /* Myntra Green (Trust) */
+    --dark: #282C3F; /* Myntra Charcoal */
+    --gray: #f5f5f5;
+    --border: #eaeaec;
+    --white: #fff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Assistant', sans-serif; -webkit-tap-highlight-color: transparent; }
+body { background: var(--gray); padding-bottom: 70px; color: var(--dark); }
+a { text-decoration: none; color: inherit; }
+img { max-width: 100%; display: block; }
+button { cursor: pointer; }
+
+/* --- UNIVERSAL HEADER (Used on Home & Product) --- */
+.top-header {
+    background: var(--white);
+    padding: 10px 15px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    height: 55px;
+}
+.header-title { flex-grow: 1; font-size: 16px; font-weight: 500; color: var(--dark); }
+.header-icons { display: flex; gap: 15px; font-size: 22px; color: var(--dark); }
+.menu-btn { font-size: 22px; color: var(--dark); }
+
+/* --- SIDEBAR --- */
+.sidebar {
+    position: fixed; left: -280px; top: 0; width: 250px; height: 100%;
+    background: white; z-index: 1000; transition: 0.3s; box-shadow: 2px 0 5px rgba(0,0,0,0.2); padding: 20px;
+}
+.sidebar.active { left: 0; }
+.sidebar-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); z-index: 999; display: none;
+}
+.sidebar-overlay.active { display: block; }
+
+/* --- HOME PAGE ELEMENTS --- */
+.search-container { flex-grow: 1; display: flex; border: 1px solid var(--primary); border-radius: 4px; overflow: hidden; height: 35px; }
+.search-input { width: 100%; border: none; padding: 0 10px; outline: none; font-size: 14px; }
+.search-btn { background: var(--primary); color: var(--white); border: none; padding: 0 15px; font-size: 16px; display: flex; align-items: center; }
+
+.sort-bar { background: var(--white); display: flex;  justify-content: space-around; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--dark); }
+.sort-item.active { color: var(--primary); font-weight: bold; }
+
+/* Promo Banner */
+.promo-banner img { width: 100%; aspect-ratio: 3 / 1;  display: block; object-fit: cover; max-height: 150px; }
+
+/* --- PRODUCT GRID (Fixed) --- */
+/* --- 1. TWO-COLUMN MASONRY WRAPPER --- */
+.product-grid {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    align-items: flex-start; /* Prevents columns from stretching to match each other */
+}
+
+/* The invisible columns we will create with JS */
+.masonry-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1; /* Makes both columns exactly 50% width */
+    width: 50%;
+}
+
+
+
+
+
+
+
+
+
+
+/* --- 2. THE CARD (MYNTRA STYLE) --- */
+/* --- 2. THE CARD (MYNTRA SKELETON) --- */
+/* --- 2. THE CARD (MYNTRA SKELETON) --- */
+.product-card { 
+    background: transparent; 
+    border-radius: 0; 
+    overflow: visible; 
+    display: flex; 
+    flex-direction: column; 
+    height: max-content;
+    width: 100%;
+}
+
+.image-wrapper {
+    position: relative;
+    width: 100%;
+    border-radius: 6px; 
+    overflow: hidden; 
+}
+
+.product-card img { 
+    width: 100%; 
+    aspect-ratio: 3 / 4; 
+    height: auto; 
+    object-fit: cover; 
+    background-color: #f0f0f0; 
+    animation: pulseBg 1.5s infinite; 
+}
+
+.sold-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: bold;
+    padding: 3px 6px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+@keyframes pulseBg {
+    0% { background-color: #f0f0f0; }
+    50% { background-color: #e0e0e0; }
+    100% { background-color: #f0f0f0; }
+}
+
+.p-details { 
+    padding: 5px 4px 6px 4px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 0; 
+}
+
+.p-brand { 
+    font-size: 13px; 
+    font-weight: 700; 
+    color: var(--dark);
+    line-height: 1.1;
+    display: -webkit-box; 
+    -webkit-line-clamp: 1; 
+    -webkit-box-orient: vertical; 
+    overflow: hidden; 
+    margin: 0 0 2px 0; 
+    padding: 0;
+}
+
+.p-title { 
+    font-size: 11px; 
+    color: #7E818C; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    line-height: 1.1;
+    margin: 0 0 2px 0; /* Ultra tight margin */
+    padding: 0;
+}
+
+.price-row {
+    /* FIX: Removed Flexbox completely. Inline-block flow is foolproof against ghost spacing */
+    display: block;
+    line-height: 1;
+    margin: 0;
+    padding: 0;
+}
+
+.p-old-price { font-size: 12px; color: #7E818C; text-decoration: line-through; margin: 0 4px 0 0; padding: 0; display: inline-block; } 
+.p-price { color: var(--dark); font-size: 13px; font-weight: 700; margin: 0 4px 0 0; padding: 0; display: inline-block; }
+.p-discount { color: #FF905A; font-size: 10px; font-weight: 700; margin: 0; padding: 0; display: inline-block; }
+
+
+
+
+
+
+
+
+
+/* --- PRODUCT DETAILS PAGE --- */
+/* Note: We now use .top-header for the product page too */
+/* --- PRODUCT DETAILS PAGE --- */
+/* --- PRODUCT DETAILS PAGE --- */
+/* --- PRODUCT DETAILS PAGE --- */
+.product-image-container {
+    position: relative;
+    width: 100%;
+    max-height: 65vh; /* FIX: Set limit to 65vh like H&M */
+    overflow: hidden;
+    background: #f5f5f5; 
+    display: block; /* FIX: Set to block so smaller images collapse the container natively and pull content up */
+}
+
+.bg-blur { display: none; }
+
+.detail-image {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: auto; /* FIX: Respects native aspect ratio */
+    max-height: 65vh; /* FIX: Set limit to 65vh */
+    object-fit: cover !important; /* Crops cleanly only if image exceeds 65vh */
+    z-index: 2; 
+}
+
+.gallery-strip { display: flex; gap: 8px; overflow-x: auto; padding: 8px 10px; background: white; border-bottom: 1px solid #eee; }
+.thumbnail { width: 35px; height: 35px; border-radius: 4px; border: 1px solid #ddd; object-fit: cover; flex-shrink: 0; }
+.thumbnail.active { border: 2px solid var(--primary); }
+
+
+
+.detail-info { background: white; padding: 10px 15px; margin-bottom: 5px; } /* Tighter container padding */
+.detail-title { font-size: 16px; font-weight: 700; color: var(--dark); line-height: 1.2; margin: 0 0 2px 0; }
+.detail-subtitle { font-size: 13px; color: #7E818C; margin: 0 0 2px 0; line-height: 1.1; } /* Ultra tight subtitle gap */
+.detail-price { margin: 0; }
+
+
+
+
+
+
+
+.section-title { font-size: 15px; font-weight: 700; color: var(--dark); padding: 5px 15px; margin-top: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
+.info-text { font-size: 14px; color: #444; line-height: 1.6; }
+
+.details-box {
+    background: #ffffff;
+    border: 1px solid #eaeaec;
+    border-radius: 12px;
+    padding: 15px;
+    margin: 10px 15px;
+}
+
+
+
+
+
+/* --- MODAL & SELECTION --- */
+.selection-modal {
+    position: fixed; bottom: -100%; left: 0; width: 100%; background: white; z-index: 1001;
+    border-radius: 15px 15px 0 0; padding: 15px; transition: 0.3s ease-out; box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+}
+.selection-modal.active { bottom: 0; }
+
+.variant-section { margin-bottom: 15px; }
+.variant-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #555; }
+.size-option { display: inline-block; border: 1px solid #ddd; padding: 5px 15px; border-radius: 4px; margin-right: 5px; font-size: 13px; }
+.size-option.selected { border-color: var(--primary); color: var(--primary); background: #fff0e8; }
+.color-option { display: inline-block; width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; border: 2px solid transparent; position: relative; }
+.color-option.selected { border: 2px solid var(--primary); transform: scale(1.1); }
+
+.qty-control { display: flex; align-items: center; }
+.qty-btn { width: 30px; height: 30px; background: #eee; border: none; font-size: 18px; border-radius: 4px; }
+.qty-val { margin: 0 15px; font-size: 14px; font-weight: bold; }
+
+/* --- CHECKOUT --- */
+.checkout-header { justify-content: flex-start; } /* Override default space-between */
+.checkout-container { padding: 15px; background: white; min-height: 100vh; }
+.checkout-item { display: flex; gap: 10px; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
+.checkout-img { width: 70px; height: 70px; border-radius: 5px; object-fit: cover; }
+.checkout-details { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.form-group { margin-bottom: 15px; }
+.form-label { display: block; font-size: 14px; margin-bottom: 5px; color: #4F4E5C; font-weight: bold; }
+.form-input, .form-select, .form-textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background: white; }
+.place-order-btn { background: var(--primary); color: white; width: 100%; padding: 15px; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; margin-top: 10px; }
+
+/* --- BOTTOM NAV --- */
+.bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid var(--border); display: flex; height: 60px; z-index: 900; }
+.nav-item { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 10px; color: #666; }
+.nav-item.active { color: var(--primary); }
+.nav-item i { font-size: 20px; margin-bottom: 2px; }
+
+
+
+
+/* Product Page Bottom Bar */
+/* Product Page Bottom Bar */
+/* Product Page Bottom Bar - Solid Premium Buttons */
+/* Product Page Bottom Bar - Solid Premium Buttons */
+.product-bottom-nav { 
+    justify-content: flex-start; 
+    align-items: center; 
+}
+.icon-btn { 
+    width: 15%; 
+    height: 100%; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    border-right: 1px solid #eee; 
+    font-size: 12px; 
+    color: var(--dark); 
+    font-weight: 600;
+}
+.btn-buy, .btn-cart { 
+    flex: 1; 
+    height: 42px; 
+    border: none; 
+    font-weight: 700; 
+    font-size: 14px; 
+    border-radius: 30px; /* Round Pill Shape */
+    margin-right: 10px; 
+    transition: transform 0.1s; 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.btn-buy:active, .btn-cart:active { transform: scale(0.96); }
+
+/* Buy Now = Myntra Rose with Shadow */
+.btn-buy { 
+    margin-left: 10px; 
+    background: var(--primary); 
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 63, 108, 0.35);
+}
+
+/* Add To Cart = Deep Charcoal with Shadow */
+.btn-cart { 
+    background: var(--dark); 
+    color: white; 
+    box-shadow: 0 4px 12px rgba(40, 44, 63, 0.35);
+}
+
+/* --- NEW FEATURES CSS --- */
+/* Cart Badge - High Contrast Pop */
+.cart-icon-wrapper { position: relative; display: inline-block; }
+.cart-badge {
+    position: absolute; top: -6px; right: -8px;
+    background: var(--primary); color: white;
+    font-size: 11px; font-weight: 800;
+    padding: 2px 6px; border-radius: 12px; display: none;
+    border: 2px solid white; /* Pop out effect */
+    box-shadow: 0 2px 4px rgba(255,63,108,0.3);
+}
+
+
+
+
+
+
+
+
+/* Toast Notification */
+/* --- UPDATED TOAST NOTIFICATION (Centered Daraz Style) --- */
+.toast-notification {
+    position: fixed; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%) scale(0.9);
+    background: rgba(50, 50, 50, 0.95); 
+    color: white; 
+    padding: 25px 20px;
+    border-radius: 8px; 
+    font-size: 15px; 
+    z-index: 10005; /* Ensures it pops up above the modal */
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    gap: 15px;
+    text-align: center; 
+    min-width: 220px;
+    opacity: 0; 
+    visibility: hidden; 
+    transition: 0.2s ease-out;
+}
+.toast-notification.show { 
+    transform: translate(-50%, -50%) scale(1); 
+    opacity: 1; 
+    visibility: visible; 
+}
+
+
+
+/* Home Page Old Price */
+.p-old-price { font-size: 11px; color: #999; text-decoration: line-through; margin-left: 5px; font-weight: normal; }
+
+
+
+
+/* Daraz Style Color Button (Text + Image) */
+.color-option {
+    display: inline-flex; 
+    align-items: center; 
+    gap: 8px; /* Space between image and text */
+    border: 1px solid #ddd; 
+    padding: 4px 12px 4px 4px;
+    border-radius: 4px; 
+    background: white; 
+    font-size: 13px;
+    cursor: pointer;
+    
+    /* THE FIX: This overrides the old 30px circle limit */
+    width: auto !important; 
+    height: auto !important; 
+    white-space: nowrap; /* Stops text from wrapping to a new line */
+}
+
+.color-option img { 
+    width: 28px !important; 
+    height: 28px !important; 
+    min-width: 28px; /* Prevents flexbox from squishing the image */
+    border-radius: 4px; 
+    object-fit: cover; 
+}
+.color-option.selected { border-color: var(--primary); color: var(--primary); background: #fff0e8; }
+
+/* Fullscreen Image Modal */
+/* Fullscreen Image Modal */
+.fullscreen-img-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: black; z-index: 9999; display: none;
+    justify-content: center; 
+    align-items: flex-start; 
+    overflow-y: auto; 
+    padding: 20px 0;
+}
+.fullscreen-img-modal.active { display: flex; }
+.fullscreen-img-modal img { 
+    max-width: 100%; 
+    height: auto; 
+    object-fit: contain; 
+    margin: auto; 
+}
+.close-fullscreen { position: absolute; top: 20px; right: 20px; color: white; font-size: 30px; cursor: pointer; }
+
+
+
+
+
+
+/* Empty Cart State */
+.empty-cart-msg { text-align: center; padding: 50px 20px; color: #666; }
+.empty-cart-msg i { font-size: 50px; color: #ccc; margin-bottom: 15px; }
+
+
+
+
+
+
+/* Checkout Text Wrapping & Delete Button */
+.checkout-details { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; /* min-width 0 forces flex to allow truncation */ }
+.checkout-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 20px; color: #222; }
+.checkout-price { font-weight: bold; color: var(--primary); font-size: 15px; white-space: nowrap; }
+.delete-btn-wrap { position: absolute; top: 0; right: 0; padding: 5px; cursor: pointer; color: #ff4757; font-size: 18px; }
+
+/* Custom Confirm Modal */
+.custom-confirm-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+    z-index: 10000; display: none; justify-content: center; align-items: center; padding: 20px;
+}
+.custom-confirm-modal.active { display: flex; }
+.confirm-box { background: white; padding: 20px; border-radius: 8px; width: 100%; max-width: 300px; text-align: center; }
+.confirm-box p { margin-bottom: 20px; color: #333; font-size: 15px; font-weight: 500; }
+.btn-cancel { background: #eee; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; color: #555; width: 45%; }
+.btn-danger { background: #ff4757; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; color: white; width: 45%; }
+
+/* Fix overlapping Colors */
+.variant-section { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 15px; }
+.variant-title { width: 100%; } /* Forces title to own line */
+
+/* Product Page Description Fix */
+.info-text { font-size: 14px; color: #444; padding: 10px 15px 15px 15px; line-height: 1.6; background: white; }
+
+/* Header Search Input */
+.header-search-box { flex-grow: 1; display: none; align-items: center; background: #f0f0f0; border-radius: 20px; padding: 5px 15px; margin: 0 10px; }
+.header-search-box.active { display: flex; }
+.header-search-box input { border: none; background: transparent; width: 100%; outline: none; font-size: 14px; }
+
+
+/* --- OUT OF STOCK STYLES --- */
+.btn-disabled {
+    background: #ccc !important;
+    color: #888 !important;
+    cursor: not-allowed;
+    pointer-events: none; /* Prevents any clicks */
+}
+
+.out-of-stock-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 25px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 4px;
+    z-index: 10;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    backdrop-filter: blur(2px);
+}
+
+/* --- NEW FEATURE STYLES --- */
+/* Sticky Sort Bar */
+.sort-bar { display: flex; top: 55px; z-index: 98; background: var(--white); }
+
+
+/* Collapsible Sidebar (UPDATED) */
+.menu-category { padding: 12px 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-weight: bold; cursor: pointer; color: var(--dark); transition: background 0.2s; }
+.sub-menu { display: none; padding-left: 15px; background: #fafafa; border-bottom: 1px solid #eee; }
+.sub-menu p { padding: 10px 15px; color: #555; cursor: pointer; font-size: 14px; transition: color 0.2s; }
+
+/* Highlights for active categories */
+.menu-category.active-cat, .sub-menu p.active-cat { color: var(--primary); font-weight: bold; background: #fff0e8; border-radius: 4px; }
+.sub-menu p.active-cat { border-left: 3px solid var(--primary); border-radius: 0 4px 4px 0; }
+
+.menu-category.open + .sub-menu { display: block; }
+.menu-category.open i { transform: rotate(180deg); transition: 0.3s; }
+
+/* Product Tags */
+.product-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.tag-pill { background: #f0f0f0; color: #555; font-size: 11px; padding: 3px 8px; border-radius: 12px; cursor: pointer; }
+
+/* Word Break Fix */
+.info-text { overflow-wrap: break-word; word-break: break-word; }
+
+/* Read-Only Summary (Thank You Page) */
+.summary-item { display: flex; gap: 10px; border-bottom: 1px dashed #ddd; padding: 10px 0; align-items: center; text-align: left; }
+.summary-item img { width: 50px; height: 50px; border-radius: 4px; object-fit: cover; }
+
+/* --- DESKTOP VIEW (MOBILE APP SIMULATION) --- */
+/* --- DESKTOP VIEW (MOBILE APP SIMULATION) --- */
+@media (min-width: 768px) {
+    html {
+        background: #e9ecef; /* Gray background outside the app */
+    }
+    body {
+        max-width: 480px;
+        margin: 0 auto;
+        box-shadow: 0 0 20px rgba(0,0,0,0.15);
+        position: relative;
+        min-height: 100vh;
+    }
+    
+    /* FIX: Removed .top-header from here! Only fixed elements need this trick */
+    .bottom-nav, .selection-modal, .toast-notification, .sidebar-overlay, .custom-confirm-modal, .fullscreen-img-modal {
+        max-width: 480px;
+        width: 100%;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+    }
+
+    /* The sticky header automatically fits its parent container without the transform trick */
+    .top-header {
+        width: 100%;
+        max-width: 480px;
+        margin: 0 auto;
+    }
+    
+    /* Sidebar smooth overlay logic */
+    .sidebar {
+        left: 50% !important;
+        margin-left: -240px; /* Aligns strictly to the left edge of the 480px container */
+        transform: translateX(-100%) !important; /* Pushes it outside */
+        opacity: 0; /* Hides it from the gray background */
+        visibility: hidden;
+    }
+    .sidebar.active {
+        transform: translateX(0) !important; /* Slides it perfectly into the container */
+        opacity: 1;
+        visibility: visible;
+    }
+}

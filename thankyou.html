@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+</head>
+<body style="background: white;">
+
+    <div class="top-header" style="justify-content:center;">
+        <span style="font-weight:bold; font-size:16px;">Order Placed</span>
+    </div>
+
+    <div style="text-align: center; padding: 60px 20px;">
+        <i class="ri-checkbox-circle-fill" style="font-size: 80px; color: #4cd137;"></i>
+        <h2 style="margin: 20px 0 10px; color: var(--dark);">Thank You!</h2>
+        <!-- NEW: Order ID Display Box -->
+<div style="background: #fff0e8; color: var(--primary); padding: 8px 15px; border-radius: 8px; display: inline-flex; align-items: center; gap: 10px; margin-bottom: 15px; font-weight: bold; border: 1px dashed var(--primary);">
+    <span>Order ID: <span id="display-order-id">Loading...</span></span>
+    <i class="ri-file-copy-line" onclick="copyOrderId()" style="cursor: pointer; font-size: 18px; padding: 5px; background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); color: var(--dark);"></i>
+</div>
+        <p style="color: #666; font-size: 14px; line-height: 1.5;">
+    Your order has been placed successfully.<br>
+    We will contact you shortly at <b id="display-phone" style="color:var(--primary);"></b> to confirm your product delivery.
+</p>
+        <button onclick="window.location.href='index.html'" class="place-order-btn" style="width: 200px; margin-top: 30px;">Continue Shopping</button>
+        <div style="background:#f9f9f9; padding:15px; margin:20px; border-radius:8px; border:1px solid #eee;">
+    <h3 style="font-size:14px; margin-bottom:10px; color:var(--dark); text-align:left;">Order Summary</h3>
+    <div id="summary-items"></div>
+</div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <i class="ri-home-5-line"></i> Home
+        </a>
+        <!-- Message Button (FIXED) -->
+<div class="nav-item" onclick="openMessenger()" style="cursor:pointer;">
+    <i class="ri-message-3-line"></i> Message
+</div>
+        <a href="checkout.html" class="nav-item">
+            <div class="cart-icon-wrapper">
+                <i class="ri-shopping-cart-2-line"></i>
+                <span class="cart-badge">0</span>
+            </div>
+            Cart
+        </a>
+    </nav>
+    <script src="global.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Display Phone
+        const phone = localStorage.getItem(STORE_ID + 'order_phone') || "your phone number";
+        const phoneElement = document.getElementById('display-phone');
+        if (phoneElement) phoneElement.innerText = phone;
+        
+        // 2. Display Order ID (NEW)
+        const orderId = localStorage.getItem(STORE_ID + 'last_order_id') || "Unknown";
+        const orderIdElement = document.getElementById('display-order-id');
+        if (orderIdElement) orderIdElement.innerText = orderId;
+        
+        // 3. Display Order Summary
+        const lastOrderData = localStorage.getItem(STORE_ID + 'last_order');
+        const summaryContainer = document.getElementById('summary-items');
+        
+        if (lastOrderData && summaryContainer) {
+            const items = JSON.parse(lastOrderData);
+            let html = '';
+            let total = 0;
+            
+            items.forEach(item => {
+                const p = item.product;
+                const v = item.variant;
+                const colorName = v.color && v.color.name ? v.color.name : 'Default';
+                const itemTotal = p.price * v.qty;
+                total += itemTotal;
+                
+                const itemImg = v.color && v.color.img ? v.color.img : p.images[0];
+                
+                html += `
+            <div class="summary-item">
+                <img src="${itemImg}">
+                <div style="flex-grow:1;">
+                    <div style="font-size:12px; font-weight:bold; color:#333;">${p.name}</div>
+                    <div style="font-size:11px; color:#777;">${colorName}, Size: ${v.size}</div>
+                    <div style="font-size:11px; color:var(--primary); font-weight:bold; margin-top:3px;">BDT ${p.price} x ${v.qty}</div>
+                </div>
+                <div style="font-size:13px; font-weight:bold; color:#222;">BDT ${itemTotal}</div>
+            </div>`;
+            });
+            
+            html += `
+            <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:14px; font-weight:bold;">
+                <span>Total (excl. delivery):</span>
+                <span style="color:var(--primary);">BDT ${total}</span>
+            </div>
+        `;
+            summaryContainer.innerHTML = html;
+        } else {
+            summaryContainer.innerHTML = `<p style="font-size:12px; color:#888;">Summary unavailable.</p>`;
+        }
+    });
+    
+    // --- NEW: COPY TO CLIPBOARD FUNCTION ---
+    function copyOrderId() {
+        const orderId = localStorage.getItem(STORE_ID + 'last_order_id');
+        if (!orderId) return;
+        
+        // We create a temporary invisible text box to ensure it copies perfectly on both iOS and Android
+        let textArea = document.createElement("textarea");
+        textArea.value = orderId;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            // Trigger the Daraz-style toast notification from your global.js
+            if (typeof showToast === 'function') {
+                showToast("Order ID Copied!", true);
+            } else {
+                alert("Order ID copied: " + orderId);
+            }
+        } catch (err) {
+            console.error("Copy to clipboard failed.");
+        }
+        document.body.removeChild(textArea);
+    }
+</script>
+</body>
+</html>

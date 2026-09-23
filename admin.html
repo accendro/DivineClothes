@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Order Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body { background-color: #e5e7eb; }
+        .app-container { max-w-md; margin: 0 auto; background: #f3f4f6; min-height: 100vh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .slide-up { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    </style>
+</head>
+<body class="text-gray-800">
+    
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="fixed inset-0 bg-gray-100 z-[100] flex flex-col justify-center items-center px-4 transition-opacity duration-300 hidden">
+    <div class="bg-white p-6 rounded-3xl shadow-xl w-full max-w-sm border border-gray-100 flex flex-col gap-4">
+        <div class="text-center mb-2">
+            <i class="ri-lock-2-fill text-4xl text-orange-500 mb-2 inline-block"></i>
+            <h1 class="text-xl font-black text-gray-800">Admin Login</h1>
+            <p class="text-xs text-gray-500 mt-1">Enter your password to access orders</p>
+        </div>
+        
+        <div class="relative">
+            <input type="password" id="pw-input" placeholder="Password" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-orange-500 transition pr-10" onkeypress="if(event.key === 'Enter') login()">
+            <button onclick="togglePw()" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600 active:scale-95 transition">
+                <i id="pw-eye" class="ri-eye-off-line text-lg"></i>
+            </button>
+        </div>
+        
+        <p id="login-error" class="text-[11px] font-bold text-red-500 text-center hidden bg-red-50 py-1 rounded">Invalid password.</p>
+        
+        <button id="login-btn" onclick="login()" class="w-full bg-gray-800 text-white rounded-xl py-3 text-sm font-bold shadow-md active:scale-95 transition flex justify-center items-center gap-2">
+            <span>Access Orders</span>
+        </button>
+    </div>
+</div>
+
+<div class="app-container max-w-md mx-auto flex flex-col">
+
+    <!-- HEADER & SEARCH -->
+    <div class="bg-white shadow-sm sticky top-0 z-20">
+        <div class="p-4 pb-2 flex justify-between items-center">
+            <h1 class="font-bold text-lg text-orange-600 flex items-center gap-2">
+                <i class="ri-dashboard-2-line"></i> Orders
+            </h1>
+            <button id="refresh-btn" onclick="fetchData(true)" class="text-gray-500 hover:text-orange-500 flex items-center gap-1 text-sm bg-gray-100 px-3 py-1 rounded-full transition shadow-sm border border-gray-200 active:scale-95">
+                <i id="refresh-icon" class="ri-refresh-line"></i> <span id="refresh-text">Sync Updates</span>
+            </button>
+        </div>
+        
+        <div class="px-4 pb-2">
+            <div class="relative">
+                <i class="ri-search-line absolute left-3 top-2 text-gray-400"></i>
+                <input type="text" id="search" placeholder="Search phone, name, IP or ID..." class="w-full bg-gray-100 rounded-lg pl-9 pr-8 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200 transition" oninput="renderOrders()">
+                <svg id="clear-search" onclick="clearSearch()" class="absolute right-2.5 top-2 w-5 h-5 text-gray-400 hidden cursor-pointer hover:text-gray-600 active:scale-95 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+        </div>
+
+        <!-- CALENDAR & SORTING CONTROLS -->
+        <div class="px-4 py-2 flex justify-between items-center bg-gray-50 border-t border-b">
+            <div class="flex items-center gap-1.5 text-xs">
+                <i class="ri-calendar-line text-gray-400"></i>
+                <select id="group-select" class="bg-transparent font-bold text-gray-700 outline-none cursor-pointer" onchange="changeGroup(this.value)">
+                    <option value="Daily">Daily View</option>
+                    <option value="Weekly">Weekly View</option>
+                    <option value="Monthly">Monthly View</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-1.5 text-xs">
+                <i class="ri-sort-desc text-gray-400"></i>
+                <select id="sort-select" class="bg-transparent font-bold text-gray-700 outline-none cursor-pointer text-right" onchange="changeSort(this.value)">
+                    <option value="Time">Sort: Newest</option>
+                    <option value="Stage">Sort: Stage</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- TOP FILTERS -->
+        <div class="flex overflow-x-auto hide-scrollbar px-4 pb-3 pt-3 gap-2 border-b" id="status-filters">
+            <button onclick="setStatusFilter('All')" class="filter-btn active-filter shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-gray-800 text-white transition">All</button>
+            <button onclick="setStatusFilter('New')" class="filter-btn shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border transition">New</button>
+            <button onclick="setStatusFilter('Confirmed')" class="filter-btn shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border transition">Confirmed</button>
+            <button onclick="setStatusFilter('Shipped')" class="filter-btn shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border transition">Shipped</button>
+            <button onclick="setStatusFilter('Delivered')" class="filter-btn shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border transition">Delivered</button>
+            <button onclick="setStatusFilter('Failed Delivery')" class="filter-btn shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border transition">Failed Delivery</button>
+            <button onclick="setStatusFilter('Canceled')" class="filter-btn shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border transition">Canceled</button>
+        </div>
+    </div>
+
+    <!-- ORDER LIST CONTAINER -->
+    <div id="order-container" class="p-3 flex-1 overflow-y-auto pb-20">
+        <div class="text-center text-gray-400 mt-10">
+            <i class="ri-loader-4-line animate-spin text-3xl"></i>
+            <p class="text-sm mt-2">Loading orders...</p>
+        </div>
+    </div>
+
+</div>
+
+<!-- DETAILED ORDER MODAL -->
+<div id="detail-modal" class="fixed inset-0 z-50 hidden flex justify-center items-end bg-black/60" onclick="closeDetails(event)">
+    <div id="modal-content" class="bg-gray-50 w-full max-w-md h-[92vh] rounded-t-3xl flex flex-col shadow-2xl slide-up overflow-hidden transition-transform duration-300" onclick="event.stopPropagation()">
+        
+        <div class="w-full flex justify-center py-3 cursor-grab active:cursor-grabbing" id="pull-handle">
+            <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+        </div>
+        
+        <div class="px-5 pb-3 border-b flex justify-between items-center bg-white">
+            <div>
+                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Order ID</span>
+                <div class="flex items-center gap-2">
+                    <span id="modal-order-id" class="block text-sm font-black text-gray-800"></span>
+                    <button onclick="copyText('modal-order-id', 'Order ID')" class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 active:scale-95 shrink-0">
+                        <i class="ri-file-copy-line text-[10px]"></i>
+                    </button>
+                </div>
+                <span id="modal-date" class="block text-[10px] text-gray-400 font-bold mt-0.5"></span>
+            </div>
+            <button onclick="closeDetails()" class="bg-gray-100 text-gray-500 rounded-full w-9 h-9 flex items-center justify-center hover:bg-gray-200">
+                <i class="ri-close-line text-2xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-4 overflow-y-auto flex-1 hide-scrollbar">
+            <div id="modal-dup-warning" class="mb-4 hidden cursor-pointer transition hover:opacity-80"></div>
+            
+            <!-- STAGE & NOTE -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border mb-2">
+                <div class="flex justify-between items-center mb-2 ">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Order Stage</label>
+                    <span id="sync-indicator" class="text-[10px] font-bold text-gray-400 italic">Saved</span>
+                </div>
+                <select id="modal-status-select" onchange="autoSaveTrigger()" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none mb-3">
+                    <option value="New">New</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Shipped">Shipped</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Failed Delivery">Failed Delivery</option>
+                    <option value="Canceled">Canceled</option>
+                </select>
+
+                <!-- BACKUP TRACKING INPUT -->
+                <div id="tracking-input-container" class="hidden mb-3 transition-all">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase block mb-1">Steadfast CN Number:</label>
+                    <input type="text" id="modal-tracking-id" oninput="autoSaveTrigger()" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none" placeholder="e.g. 244180165">
+                </div>
+                
+                <label class="text-[10px] font-bold text-gray-400 uppercase block mb-1">Internal Note:</label>
+                <textarea id="modal-admin-note" oninput="autoSaveTrigger()" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none min-h-[60px]" placeholder="Add note about this order..."></textarea>
+            </div>
+
+            <!-- ONE-CLICK DISPATCH UI -->
+            <div id="steadfast-booking-box" class="bg-[#e8f5e9] p-4 rounded-2xl shadow-sm border border-[#a5d6a7] mb-2 hidden transition-all">
+                <div class="flex items-center justify-between mb-3 border-b border-[#c8e6c9] pb-2">
+                    <h3 class="text-[11px] font-black text-[#2e7d32] uppercase tracking-widest flex items-center gap-1">
+                        <i class="ri-truck-fill text-lg"></i> Steadfast Add Parcel
+                    </h3>
+                    <span class="text-[9px] bg-[#c8e6c9] text-[#2e7d32] px-2 py-0.5 rounded font-bold">API Ready</span>
+                </div>
+                
+                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Cash to Collect (COD):</label>
+                <div class="relative mb-3">
+                    <span class="absolute left-3 top-2.5 font-bold text-gray-500">৳</span>
+                    <input type="number" id="sf-cod-amount" class="w-full p-2.5 pl-7 bg-white border border-[#a5d6a7] rounded-xl text-sm font-bold outline-none focus:border-[#2e7d32] transition" placeholder="e.g. 1150">
+                </div>
+                <p class="text-[9px] text-gray-500 mb-3 leading-tight">Change the amount if needed.</p>
+
+                <button id="sf-book-btn" onclick="bookSteadfastOrder()" class="w-full bg-[#2e7d32] text-white rounded-xl py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition shadow-md shadow-green-200">
+                    Send to Steadfast
+                </button>
+            </div>
+
+            <!-- CUSTOMER DETAILS -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border mb-2 space-y-4">
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b pb-1">Customer Details</h3>
+                
+                <div class="flex justify-between items-end">
+                    <div class="flex flex-col flex-1 pr-2">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Name:</span>
+                        <span class="text-lg font-bold text-gray-800 leading-tight" id="modal-name"></span>
+                    </div>
+                    <button onclick="copyText('modal-name', 'Name')" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 active:scale-95 shrink-0"><i class="ri-file-copy-line"></i></button>
+                </div>
+                
+                <div class="flex justify-between items-end">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Phone Number:</span>
+                        <span class="text-lg font-bold text-blue-600 leading-tight" id="modal-phone"></span>
+                    </div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <a href="#" id="btn-call" class="h-8 px-4 bg-green-500 text-white rounded-full text-xs font-bold flex items-center gap-1 shadow-sm active:scale-95"><i class="ri-phone-fill"></i> CALL</a>
+                        <button onclick="copyText('modal-phone', 'Phone Number')" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 active:scale-95"><i class="ri-file-copy-line"></i></button>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-end">
+                    <div class="flex flex-col flex-1 pr-2">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Delivery Address:</span>
+                        <span class="text-sm text-gray-700 font-medium leading-relaxed mt-1" id="modal-address"></span>
+                    </div>
+                    <button onclick="copyText('modal-address', 'Address')" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 active:scale-95 shrink-0"><i class="ri-file-copy-line"></i></button>
+                </div>
+                
+                <div id="modal-note-container" class="bg-orange-50 p-3 rounded-xl border border-orange-100 hidden">
+                    <span class="text-[10px] font-bold text-orange-400 uppercase block mb-1">Special Message from Customer</span>
+                    <p class="text-sm text-orange-900 font-medium" id="modal-note"></p>
+                </div>
+            </div>
+            
+            <div class="m-4">
+                <div id="modal-ip-text" class="text-xs text-gray-400 font-medium whitespace-pre-wrap leading-relaxed"></div>
+            </div>
+            
+            <!-- ORDER DETAILS -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border mb-6">
+                <label class="text-[10px] font-bold text-gray-400 uppercase block mb-2 border-b pb-1">Order Details</label>
+                <div class="mb-4">
+                    <div class="flex gap-2 overflow-x-auto hide-scrollbar" id="modal-images"></div>
+                </div> 
+                <div id="modal-items" class="text-sm text-gray-800 font-medium leading-relaxed mb-4 bg-gray-50 p-3 rounded-xl border border-dashed border-gray-200"></div>
+                <div class="space-y-2 pt-2 border-t">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-400 font-bold uppercase text-[10px]">Subtotal (Items):</span>
+                        <span id="modal-subtotal" class="font-bold text-gray-700"></span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-orange-400 font-bold uppercase text-[10px]">Grand Total:</span>
+                        <span id="modal-total" class="text-xl font-black text-orange-600"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="image-viewer" class="fixed inset-0 bg-black z-[60] hidden flex items-center justify-center" onclick="this.classList.add('hidden')">
+    <img id="viewer-img" src="" class="max-w-full max-h-full object-contain">
+    <i class="ri-close-line absolute top-4 right-4 text-white text-3xl cursor-pointer"></i>
+</div>
+
+<script src="global.js"></script>
+<script>
+    const CACHE_KEY = "admin_orders_cache";
+    const TIME_KEY = "admin_last_fetch";
+    const TIME_KEY_SYNC = "admin_last_steadfast_sync";
+    
+    let allOrders =[];
+    let currentFilter = 'All';
+    let selectedOrderIndex = null;
+    let saveTimeout = null;
+    let adminPassword = localStorage.getItem(STORE_ID + 'admin_pw') || '';
+    
+    let currentGroupBy = localStorage.getItem(STORE_ID + 'admin_group') || 'Daily';
+    let currentSortBy = localStorage.getItem(STORE_ID + 'admin_sort') || 'Time';
+    
+    window.addEventListener('DOMContentLoaded', () => {
+        const grp = document.getElementById('group-select');
+        const srt = document.getElementById('sort-select');
+        if (grp) grp.value = currentGroupBy;
+        if (srt) srt.value = currentSortBy;
+        
+        if (adminPassword) {
+            const cachedData = localStorage.getItem(STORE_ID + CACHE_KEY);
+            if (cachedData) {
+                try {
+                    allOrders = JSON.parse(cachedData);
+                    allOrders.forEach(o => { if (o.Status === 'Intake') o.Status = 'New'; });
+                } catch (e) { console.error("Cache corrupted"); }
+            }
+            setStatusFilter(currentFilter);
+            fetchData(false, false);
+        } else {
+            document.getElementById('login-screen').classList.remove('hidden');
+        }
+    });
+
+    function changeGroup(val) { currentGroupBy = val; localStorage.setItem(STORE_ID + 'admin_group', val); renderOrders(); }
+    function changeSort(val) { currentSortBy = val; localStorage.setItem(STORE_ID + 'admin_sort', val); renderOrders(); }
+    
+    function togglePw() {
+        const input = document.getElementById('pw-input');
+        const eye = document.getElementById('pw-eye');
+        if (input.type === 'password') {
+            input.type = 'text'; eye.classList.replace('ri-eye-off-line', 'ri-eye-line');
+        } else {
+            input.type = 'password'; eye.classList.replace('ri-eye-line', 'ri-eye-off-line');
+        }
+    }
+
+    async function login() {
+        const pwInput = document.getElementById('pw-input');
+        const loginError = document.getElementById('login-error');
+        const btn = document.getElementById('login-btn');
+        const enteredPw = pwInput.value.trim();
+
+        if (!enteredPw) {
+            if(loginError) { loginError.innerText = "Please enter a password."; loginError.classList.remove('hidden'); }
+            return;
+        }
+
+        adminPassword = enteredPw; 
+        if(loginError) loginError.classList.add('hidden');
+        btn.innerHTML = `<i class="ri-loader-4-line animate-spin text-lg"></i> Authenticating...`;
+        btn.disabled = true;
+
+        await fetchData(true, true);
+    }
+    
+    async function fetchData(force = false, isManualLogin = false) {
+    if (!adminPassword) return;
+    
+    const now = Date.now();
+    const lastFetch = localStorage.getItem(STORE_ID + TIME_KEY) || 0;
+    const lastSync = localStorage.getItem(STORE_ID + TIME_KEY_SYNC) || 0;
+    const container = document.getElementById('order-container');
+    const loginError = document.getElementById('login-error');
+    
+    // 60-Second Cooldown: Prevents spamming the sheet if you just opened it
+    if (!force && (now - lastFetch < 60000) && allOrders.length > 0) return;
+    
+    const refreshIcon = document.getElementById('refresh-icon');
+    if (refreshIcon) refreshIcon.classList.add('animate-spin');
+    
+    // 12-Hour Cooldown Math (12 hours = 43,200,000 milliseconds)
+    const TWELVE_HOURS = 43200000;
+    
+    // We sync Steadfast IF you pressed the manual button (force), OR if 12 hours have passed
+    const shouldCheckSteadfast = force || (now - lastSync > TWELVE_HOURS);
+    
+    try {
+        // Dynamically add the &sync=true ONLY if 12 hours passed or manual button clicked
+        const fetchUrl = `${API_URL}?pw=${encodeURIComponent(adminPassword)}${shouldCheckSteadfast ? '&sync=true' : ''}`;
+        const res = await fetch(fetchUrl);
+        const data = await res.json();
+        
+        if (data.error === "Unauthorized access") throw new Error("unauth");
+        
+        if (isManualLogin) {
+            localStorage.setItem(STORE_ID + 'admin_pw', adminPassword);
+            document.getElementById('login-screen').classList.add('hidden');
+        }
+        
+        if (Array.isArray(data)) {
+            allOrders = data.reverse();
+            allOrders.forEach(o => { if (o.Status === 'Intake') o.Status = 'New'; });
+            
+            // Save basic sheet data to memory
+            localStorage.setItem(STORE_ID + CACHE_KEY, JSON.stringify(allOrders));
+            localStorage.setItem(STORE_ID + TIME_KEY, now);
+            
+            // If we successfully checked Steadfast this time, reset the 12-hour clock!
+            if (shouldCheckSteadfast) {
+                localStorage.setItem(STORE_ID + TIME_KEY_SYNC, now);
+            }
+            
+            renderOrders();
+        }
+        
+    } catch (err) {
+        if (err.message === "unauth") {
+            adminPassword = '';
+            localStorage.removeItem(STORE_ID + 'admin_pw');
+            if (isManualLogin) {
+                loginError.innerText = "Invalid password. Access denied.";
+                loginError.classList.remove('hidden');
+                const btn = document.getElementById('login-btn');
+                btn.innerHTML = `<span>Access Orders</span>`;
+                btn.disabled = false;
+            } else {
+                document.getElementById('login-screen').classList.remove('hidden');
+            }
+        } else {
+            if (allOrders.length === 0) container.innerHTML = `<p class="text-center text-red-500 mt-10">Network error or invalid response.</p>`;
+        }
+    } finally {
+        if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+    }
+}
+    
+    function autoSaveTrigger() {
+        updateSelectColor(); 
+        const indicator = document.getElementById('sync-indicator');
+        indicator.innerText = "Typing...";
+        indicator.className = "text-[10px] font-bold text-orange-500";
+
+        const order = allOrders.find(o => o.rowIndex === selectedOrderIndex);
+        if (order) {
+            order.Status = document.getElementById('modal-status-select').value;
+            order.Admin_Note = document.getElementById('modal-admin-note').value;
+            order.Tracking_ID = document.getElementById('modal-tracking-id').value; // Saved locally
+            localStorage.setItem(STORE_ID + CACHE_KEY, JSON.stringify(allOrders));
+            renderOrders();
+        }
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(performSync, 1500);
+    }
+
+    async function performSync() {
+        if (selectedOrderIndex === null) return;
+        const indicator = document.getElementById('sync-indicator');
+        indicator.innerText = "Syncing...";
+        indicator.className = "text-[10px] font-bold text-blue-500";
+
+        const order = allOrders.find(o => o.rowIndex === selectedOrderIndex);
+        const payload = { 
+            pw: adminPassword, 
+            rowIndex: selectedOrderIndex, 
+            status: order.Status,
+            adminNote: order.Admin_Note,
+            trackingId: order.Tracking_ID || "" // Sent to Sheet
+        };
+
+        try {
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+            indicator.innerText = "Saved to Cloud ✓";
+            indicator.className = "text-[10px] font-bold text-green-600";
+            setTimeout(() => { 
+                if(indicator.innerText.includes("Saved")) indicator.innerText = "Saved"; 
+                indicator.className = "text-[10px] font-bold text-gray-400 italic";
+            }, 3000);
+        } catch (err) {
+            indicator.innerText = "Offline - Saved Locally";
+            indicator.className = "text-[10px] font-bold text-red-500";
+        }
+    }
+
+    // STEADFAST API BOOKING
+    async function bookSteadfastOrder() {
+    const order = allOrders.find(o => o.rowIndex === selectedOrderIndex);
+    if (!order) return;
+    
+    if (order.Tracking_ID && String(order.Tracking_ID).trim() !== "") {
+        alert("This order is already booked to Steadfast!");
+        return;
+    }
+    
+    const btn = document.getElementById('sf-book-btn');
+    const codAmount = document.getElementById('sf-cod-amount').value;
+    
+    btn.innerHTML = `<i class="ri-loader-4-line animate-spin text-lg"></i> Booking...`;
+    btn.disabled = true;
+    btn.classList.add('opacity-70');
+    
+    // Create the GET parameters safely
+    const queryParams = new URLSearchParams({
+        action: "bookSteadfast",
+        pw: adminPassword,
+        rowIndex: order.rowIndex,
+        orderId: order.Order_ID || "N/A",
+        customerName: order.Customer_Name || "No Name",
+        customerPhone: String(order.Phone).replace(/[^0-9]/g, ''),
+        customerAddress: order.Address || "No Address",
+        codAmount: codAmount,
+        note: order.Order_Note !== "No Note" ? order.Order_Note : ""
+    });
+    
+    try {
+        // Because this is a GET request, the browser will NOT block it!
+        const res = await fetch(`${API_URL}?${queryParams.toString()}`);
+        const text = await res.text();
+        
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            alert("Google Script Error. Did you deploy as New Version?");
+            btn.innerHTML = `Try Again`;
+            return;
+        }
+        
+        if (data.status === "success") {
+            order.Tracking_ID = data.trackingId;
+            document.getElementById('modal-tracking-id').value = data.trackingId;
+            updateSelectColor();
+            autoSaveTrigger(); // Force memory to save
+            
+            let cleanID = String(data.trackingId).replace(/\D/g, '');
+            btn.innerHTML = `<i class="ri-check-double-line text-lg"></i> Booked: CN#${cleanID}`;
+            btn.className = "w-full bg-gray-800 text-white rounded-xl py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition shadow-md pointer-events-none opacity-90";
+        } else {
+            alert("Steadfast Rejected the Order: \n" + data.message);
+            btn.innerHTML = `Try Again`;
+        }
+    } catch (err) {
+        alert("Browser/Network Error:\n" + err.message);
+        btn.innerHTML = `Send to Steadfast`;
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-70');
+    }
+}
+
+    function parseTimestamp(str) {
+        if (!str) return new Date(NaN);
+        const parts = String(str).split(',');
+        if (parts.length < 2) return new Date(str);
+        const datePart = parts[0].trim();
+        const timePart = parts[1].trim();
+        const dateNums = datePart.split('/');
+        if (dateNums.length < 3) return new Date(NaN);
+
+        const day   = parseInt(dateNums[0], 10);
+        const month = parseInt(dateNums[1], 10);
+        const year  = parseInt(dateNums[2], 10);
+
+        const timeNums = timePart.replace(/AM|PM/i, '').trim().split(':');
+        let hours   = parseInt(timeNums[0], 10) || 0;
+        const mins  = parseInt(timeNums[1], 10) || 0;
+        const secs  = parseInt(timeNums[2], 10) || 0;
+
+        const isPM = /PM/i.test(timePart);
+        if (isPM && hours !== 12) hours += 12;
+        if (!isPM && hours === 12) hours = 0;
+        return new Date(year, month - 1, day, hours, mins, secs);
+    }
+
+    function formatCustomDate(d) {
+        if (isNaN(d.getTime())) return "Unknown Date";
+        const days =['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months =['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+    }
+
+    function copyText(elementId, labelName) {
+        const text = document.getElementById(elementId).innerText;
+        navigator.clipboard.writeText(text).then(() => { 
+            // 1. Remove any existing popup so they don't stack
+            let existingToast = document.getElementById('copy-toast');
+            if (existingToast) existingToast.remove();
+
+            // 2. Create the beautiful new popup
+            const toast = document.createElement('div');
+            toast.id = 'copy-toast';
+            toast.className = 'fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-2xl z-[9999] flex items-center gap-2 transition-all duration-300 ease-out opacity-100 translate-y-0';
+            toast.innerHTML = `<i class="ri-checkbox-circle-fill text-green-400 text-base"></i> ${labelName} Copied!`;
+            
+            document.body.appendChild(toast);
+            
+            // 3. Automatically fade it out after 2 seconds
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4');
+                setTimeout(() => toast.remove(), 300); // Remove from HTML after fade
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+        });
+    }
+
+    function setStatusFilter(status) {
+        currentFilter = status;
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            if(btn.innerText === status) {
+                btn.className = 'filter-btn active-filter shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-orange-500 text-white shadow-md transition';
+            } else {
+                btn.className = 'filter-btn shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border transition hover:bg-gray-200';
+            }
+        });
+        renderOrders();
+    }
+
+    function clearSearch() {
+        document.getElementById('search').value = '';
+        renderOrders();
+    }
+
+    function getDuplicateInfo(order) {
+        let phoneCount = 0; let ipCount = 0;
+        const targetPhone = String(order.Phone || '').replace(/[^0-9]/g, '');
+        const targetIpMatch = (order.Security___IP_Info || "").match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
+        const targetIp = targetIpMatch ? targetIpMatch[0] : null;
+
+        allOrders.forEach(o => {
+            const oPhone = String(o.Phone || '').replace(/[^0-9]/g, '');
+            if (oPhone && targetPhone && oPhone === targetPhone) phoneCount++;
+            const oIpMatch = (o.Security___IP_Info || "").match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
+            const oIp = oIpMatch ? oIpMatch[0] : null;
+            if (oIp && targetIp && oIp === targetIp) ipCount++;
+        });
+
+        const isPhoneDup = phoneCount > 1; const isIpDup = ipCount > 1;
+        return { 
+            phoneDup: isPhoneDup, ipDup: isIpDup, cleanIp: targetIp, cleanPhone: targetPhone,
+            searchTarget: isPhoneDup ? targetPhone : targetIp, 
+            msg: (isPhoneDup && isIpDup) ? "Duplicate Phone & IP" : (isPhoneDup) ? "Duplicate Phone Number" : (isIpDup) ? "Duplicate IP Address" : ""
+        };
+    }
+
+    function filterDuplicates(event, value) {
+        if(event) event.stopPropagation();
+        if(!value) return;
+        document.getElementById('search').value = value;
+        renderOrders();
+        document.getElementById('detail-modal').classList.add('hidden');
+    }
+
+function renderOrders() {
+        const container = document.getElementById('order-container');
+        const searchInput = document.getElementById('search');
+        if (!container || !searchInput) return;
+
+        const searchVal = searchInput.value.toLowerCase();
+        const clearBtn = document.getElementById('clear-search');
+        if(clearBtn) clearBtn.style.display = searchVal ? 'block' : 'none';
+
+        if (searchVal) { searchInput.classList.remove('bg-gray-100'); searchInput.classList.add('bg-orange-50', 'ring-2', 'ring-orange-500'); } 
+        else { searchInput.classList.remove('bg-orange-50', 'ring-2', 'ring-orange-500'); searchInput.classList.add('bg-gray-100'); }
+
+        let filtered = allOrders.filter(o => {
+            const statusMatch = currentFilter === 'All' || o.Status === currentFilter;
+            const d = parseTimestamp(o.Timestamp);
+            let dateSearchTags = "";
+            if(!isNaN(d.getTime())) {
+                const customD = formatCustomDate(d).toLowerCase();
+                const numD = `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear().toString().slice(-2)}`;
+                const numDLong = `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
+                dateSearchTags = `${customD} ${numD} ${numDLong}`;
+            }
+            const searchString = `${o.Customer_Name} ${o.Phone} ${o.Security___IP_Info} ${o.Order_ID} ${dateSearchTags}`.toLowerCase();
+            return statusMatch && (!searchVal || searchString.includes(searchVal));
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="text-center text-gray-400 mt-10"><i class="ri-file-search-line text-3xl"></i><p class="text-sm mt-2">No orders found.</p></div>`;
+            return;
+        }
+
+        const groups = {}; const groupKeys =[];
+        const today = new Date(); 
+
+        filtered.forEach(order => {
+            let key = "Unknown Date"; 
+            const d = parseTimestamp(order.Timestamp);
+            if (!isNaN(d.getTime())) {
+                if (currentGroupBy === 'Daily') {
+                    const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+                    key = isToday ? "Today" : formatCustomDate(d);
+                }
+                else if (currentGroupBy === 'Weekly') {
+                    const startOfWeek = new Date(d); startOfWeek.setDate(d.getDate() - d.getDay());
+                    key = "Week of " + formatCustomDate(startOfWeek);
+                } else if (currentGroupBy === 'Monthly') { key = `${d.toLocaleString('en-US', {month: 'long'})} ${d.getFullYear()}`; }
+            }
+            if (!groups[key]) { groups[key] =[]; groupKeys.push(key); }
+            groups[key].push(order);
+        });
+
+        const stageWeights = { 'New': 1, 'Intake': 1, 'Confirmed': 2, 'Shipped': 3, 'Delivered': 4, 'Failed Delivery': 5, 'Canceled': 6 };
+        let html = '';
+
+        groupKeys.forEach(key => {
+            groups[key].sort((a, b) => {
+                if (currentSortBy === 'Stage') return (stageWeights[a.Status] || 99) - (stageWeights[b.Status] || 99);
+                return parseTimestamp(b.Timestamp).getTime() - parseTimestamp(a.Timestamp).getTime();
+            });
+            
+            let groupRevenue = 0;
+            groups[key].forEach(order => {
+                if (order.Status === 'Delivered') {
+                    const subtotalRaw = order.Subtotal || order.Subtotal_Price || 0;
+                    groupRevenue += Number(String(subtotalRaw).replace(/[^0-9.]/g, '')) || 0;
+                }
+            });
+            
+            const isTodayHeader = key === "Today";
+            const headerColor = isTodayHeader ? "text-orange-500 font-black" : "text-gray-400 font-bold";
+            let revenueHtml = groupRevenue > 0 ? `<span class="ml-2 bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[9px] font-black tracking-normal shadow-sm">Revenue: ৳${groupRevenue.toLocaleString()}</span>` : '';
+            
+            html += `<div class="flex items-center gap-3 my-4 mt-6"><div class="h-px bg-gray-200 flex-1"></div><h2 class="text-[11px] ${headerColor} uppercase tracking-widest flex items-center">${key}${revenueHtml}</h2><div class="h-px bg-gray-200 flex-1"></div></div>`;
+            
+            groups[key].forEach(order => {
+                // --- FIX: Splits by comma, single line, or double line ---
+                const images = (order.Image_Links || "").split(/[\r\n,]+/).map(i => i.trim()).filter(i => i !== "");
+                const thumb = images.length > 0 ? images[0] : 'https://via.placeholder.com/150?text=No+Img';
+                const itemCount = images.length;
+                const dupInfo = getDuplicateInfo(order);
+                
+                let statusColor = 'bg-gray-100 text-gray-600';
+                if (order.Status === 'New' || order.Status === 'Intake') statusColor = 'bg-orange-100 text-orange-700 border-orange-200';
+                if (order.Status === 'Confirmed') statusColor = 'bg-blue-100 text-blue-700 border-blue-200';
+                if (order.Status === 'Delivered') statusColor = 'bg-green-100 text-green-700 border-green-200';
+                if (order.Status === 'Failed Delivery' || order.Status === 'Canceled') statusColor = 'bg-red-100 text-red-700 border-red-200';
+                
+                html += `
+                        <div class="bg-white p-3 mb-3 rounded-2xl shadow-sm border border-gray-100 active:scale-[0.98] transition cursor-pointer flex flex-col" onclick="openDetails(${order.rowIndex})">
+                            <div class="flex gap-3 items-center w-full">
+                                <img src="${thumb}" decoding="async" loading="lazy" class="w-16 h-16 object-cover rounded-xl bg-gray-50 border border-gray-100 shrink-0">
+                                <div class="flex-1 min-w-0 flex flex-col justify-center">
+                                    <span class="text-[10px] font-black text-gray-400 mb-0.5">${order.Order_ID || 'N/A'}</span>
+                                    <h3 class="font-bold text-sm text-gray-800 truncate">${order.Customer_Name}</h3>
+                                    <p class="text-[11px] font-bold text-orange-600">${order.Total_Price} <span class="text-gray-400 font-medium ml-1">• ${itemCount} ${itemCount === 1 ? 'item' : 'items'}</span></p>
+                                </div>
+                                <div class="shrink-0 flex flex-col items-center justify-center pl-2">
+                                    <span class="text-[10px] px-2.5 py-1.5 rounded-lg font-black tracking-wide border shadow-sm ${statusColor}">${order.Status || 'New'}</span>
+                                </div>
+                            </div>
+                            ${dupInfo.msg ? `<div class="mt-2 text-[9px] bg-red-50 text-red-600 px-2 py-1 rounded border border-red-200 inline-block font-bold active:bg-red-100 transition self-start" onclick="filterDuplicates(event, '${dupInfo.searchTarget}')">⚠️ ${dupInfo.msg}</div>` : ''}
+                        </div>`;
+            });
+        });
+        container.innerHTML = html;
+    }
+    
+    
+    function openDetails(rowIndex) {
+    const order = allOrders.find(o => o.rowIndex === rowIndex);
+    if (!order) return;
+    selectedOrderIndex = rowIndex;
+    
+    document.getElementById('modal-order-id').innerText = order.Order_ID || 'N/A';
+    document.getElementById('modal-name').innerText = order.Customer_Name;
+    document.getElementById('modal-phone').innerText = order.Phone;
+    document.getElementById('modal-address').innerText = order.Address;
+    document.getElementById('modal-subtotal').innerText = order.Subtotal || order.Subtotal_Price || '0';
+    document.getElementById('modal-total').innerText = order.Total_Price || '0';
+    document.getElementById('modal-items').innerHTML = (order.Order_Details || "").replace(/\n/g, '<br>');
+    document.getElementById('modal-ip-text').innerText = order.Security___IP_Info || "No IP Captured";
+    
+    document.getElementById('modal-tracking-id').value = order.Tracking_ID || '';
+    document.getElementById('sf-cod-amount').value = String(order.Total_Price || "0").replace(/[^0-9.]/g, '');
+    
+    const sfBtn = document.getElementById('sf-book-btn');
+    if (sfBtn) {
+        if (order.Tracking_ID && String(order.Tracking_ID).trim() !== "") {
+            let cleanID = String(order.Tracking_ID).replace(/\D/g, '');
+            sfBtn.innerHTML = `<i class="ri-check-double-line text-lg"></i> Booked: CN#${cleanID}`;
+            sfBtn.className = "w-full bg-gray-800 text-white rounded-xl py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition shadow-md pointer-events-none opacity-90";
+        } else {
+            sfBtn.innerHTML = `Send to Steadfast`;
+            sfBtn.className = "w-full bg-[#2e7d32] text-white rounded-xl py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition shadow-md shadow-green-200";
+        }
+    }
+    
+    let dStr = "Unknown Date";
+    try {
+        const d = parseTimestamp(order.Timestamp);
+        const time = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+        dStr = formatCustomDate(d) + " • " + time;
+    } catch (e) {}
+    document.getElementById('modal-date').innerText = dStr;
+    
+    const noteContainer = document.getElementById('modal-note-container');
+    if (order.Order_Note && order.Order_Note !== "No Note" && order.Order_Note.trim() !== "") {
+        document.getElementById('modal-note').innerText = order.Order_Note;
+        noteContainer.classList.remove('hidden');
+    } else { noteContainer.classList.add('hidden'); }
+    
+    const dupInfo = getDuplicateInfo(order);
+    const dupWarn = document.getElementById('modal-dup-warning');
+    if (dupInfo.msg) {
+        dupWarn.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2 shadow-sm">
+                <span><i class="ri-error-warning-fill text-lg align-middle mr-1"></i> ${dupInfo.msg.toUpperCase()}</span>
+                <span class="bg-red-600 text-white px-2 py-1 rounded text-[9px]">VIEW</span>
+            </div>`;
+        dupWarn.onclick = (e) => filterDuplicates(e, dupInfo.searchTarget);
+        dupWarn.classList.remove('hidden');
+    } else { dupWarn.classList.add('hidden'); }
+    
+    document.getElementById('modal-status-select').value = order.Status || 'New';
+    document.getElementById('modal-admin-note').value = order.Admin_Note || '';
+    
+    // --- FIX: Splits by comma, single line, or double line ---
+    const imgs = (order.Image_Links || "").split(/[\r\n,]+/).map(i => i.trim()).filter(i => i !== "");
+    document.getElementById('modal-images').innerHTML = imgs.map((img, idx) => `
+            <div class="relative shrink-0">
+                <img src="${img}" decoding="async" class="w-24 h-24 object-cover border border-gray-200 rounded-xl cursor-pointer shadow-sm active:opacity-75 transition" onclick="viewImage('${img}')">
+                <span class="absolute top-1 left-1 bg-black/70 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center shadow-md backdrop-blur-sm border border-white/20">${idx + 1}</span>
+            </div>
+        `).join('') || '<p class="text-xs text-gray-300 italic">No images attached</p>';
+    
+    const cleanPhone = String(order.Phone).replace(/[^0-9+]/g, '');
+    document.getElementById('btn-call').href = `tel:${cleanPhone}`;
+    
+    document.getElementById('detail-modal').classList.remove('hidden');
+    
+    updateSelectColor();
+    initSwipeToClose();
+}
+
+    function updateSelectColor() {
+    const select = document.getElementById('modal-status-select');
+    const trackingContainer = document.getElementById('tracking-input-container');
+    const steadfastBox = document.getElementById('steadfast-booking-box');
+    const trackingInput = document.getElementById('modal-tracking-id');
+    if (!select) return;
+    
+    const val = select.value;
+    
+    // Show tracking box if it's Shipped, OR if an ID has already been generated
+    if (val === 'Shipped' || trackingInput.value.trim() !== '') {
+        trackingContainer.classList.remove('hidden');
+    } else {
+        trackingContainer.classList.add('hidden');
+    }
+    
+    if (val === 'Confirmed') steadfastBox.classList.remove('hidden');
+    else steadfastBox.classList.add('hidden');
+    
+    select.className = "w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none mb-3 transition duration-200 ";
+    if (val === 'New' || val === 'Intake') select.className += '!bg-orange-100 !text-orange-800 !border-orange-300';
+    else if (val === 'Confirmed') select.className += '!bg-blue-100 !text-blue-800 !border-blue-300';
+    else if (val === 'Shipped') select.className += '!bg-purple-100 !text-purple-800 !border-purple-300';
+    else if (val === 'Delivered') select.className += '!bg-green-100 !text-green-800 !border-green-300';
+    else if (val === 'Failed Delivery' || val === 'Canceled') select.className += '!bg-red-100 !text-red-800 !border-red-300';
+}
+
+    function closeDetails(event) {
+        if(event && event.target.id !== 'detail-modal') return;
+        document.getElementById('detail-modal').classList.add('hidden');
+    }
+
+    function viewImage(url) {
+        const viewer = document.getElementById('image-viewer');
+        const img = document.getElementById('viewer-img');
+        if (viewer && img) { img.src = url; viewer.classList.remove('hidden'); }
+    }
+
+    function initSwipeToClose() {
+        const modal = document.getElementById('modal-content');
+        const dragArea = document.getElementById('pull-handle'); 
+        if(!modal || !dragArea) return;
+        let startY = 0; let currentY = 0;
+
+        dragArea.ontouchstart = (e) => { startY = e.touches[0].clientY; modal.style.transition = 'none'; };
+        dragArea.ontouchmove = (e) => {
+            currentY = e.touches[0].clientY - startY;
+            if (currentY > 0) { e.preventDefault(); modal.style.transform = `translateY(${currentY}px)`; }
+        };
+        dragArea.ontouchend = () => {
+            modal.style.transition = 'transform 0.3s ease-out';
+            if (currentY > 150) closeDetails();
+            else modal.style.transform = `translateY(0)`;
+            currentY = 0;
+        };
+    }
+</script>
+</body>
+</html>
