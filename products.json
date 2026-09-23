@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "EXMB_230926_1425_9HF",
+    "in_stock": true,
+    "name": "Export Quality Off White Baggy Jeans",
+    "price": 850,
+    "original_price": 999,
+    "sold": "",
+    "show_sold": false,
+    "type": "Men",
+    "sub_type": "Baggy Jeans",
+    "tags": "",
+    "images": "https://cdn.jsdelivr.net/gh/everykicu-max/ecommerce-product-image@main/images/DivineClothes/img_1790151838679_504.webp,https://cdn.jsdelivr.net/gh/everykicu-max/ecommerce-product-image@main/images/DivineClothes/img_1790151844903_617.webp,https://cdn.jsdelivr.net/gh/everykicu-max/ecommerce-product-image@main/images/DivineClothes/img_1790151842556_996.webp,https://cdn.jsdelivr.net/gh/everykicu-max/ecommerce-product-image@main/images/DivineClothes/img_1790151848360_221.webp,https://cdn.jsdelivr.net/gh/everykicu-max/ecommerce-product-image@main/images/DivineClothes/img_1790151851393_799.webp,https://cdn.jsdelivr.net/gh/everykicu-max/ecommerce-product-image@main/images/DivineClothes/img_1790151854208_253.webp",
+    "description": "Here will be the product **Description** After you Provide",
+    "colors": "",
+    "sizes": "28, 30, 32, 34, 36",
+    "delivery_days": "2026-07-03T18:00:00.000Z",
+    "keywords": ""
+  }
+]
